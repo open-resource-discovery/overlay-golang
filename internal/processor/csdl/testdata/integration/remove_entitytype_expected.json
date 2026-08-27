@@ -1,0 +1,175 @@
+{
+  "$EntityContainer": "ODataDemo.DemoService",
+  "$Reference": {
+    "https://oasis-tcs.github.io/odata-vocabularies/vocabularies/Org.OData.Core.V1.json": {
+      "$Include": [
+        {
+          "$Alias": "Core",
+          "$Namespace": "Org.OData.Core.V1",
+          "@Core.DefaultNamespace": true
+        }
+      ]
+    },
+    "https://oasis-tcs.github.io/odata-vocabularies/vocabularies/Org.OData.Measures.V1.json": {
+      "$Include": [
+        {
+          "$Alias": "Measures",
+          "$Namespace": "Org.OData.Measures.V1"
+        }
+      ]
+    }
+  },
+  "$Version": "4.0",
+  "ODataDemo": {
+    "$Alias": "self",
+    "@Core.DefaultNamespace": true,
+    "Address": {
+      "$Kind": "ComplexType",
+      "City": {
+        "$Nullable": true
+      },
+      "Country": {
+        "$Kind": "NavigationProperty",
+        "$Nullable": true,
+        "$ReferentialConstraint": {
+          "CountryName": "Name"
+        },
+        "$Type": "self.Country"
+      },
+      "CountryName": {
+        "$Nullable": true
+      },
+      "State": {
+        "$Nullable": true
+      },
+      "Street": {
+        "$Nullable": true
+      },
+      "ZipCode": {
+        "$Nullable": true
+      }
+    },
+    "Category": {
+      "$Key": [
+        "ID"
+      ],
+      "$Kind": "EntityType",
+      "ID": {
+        "$Type": "Edm.Int32"
+      },
+      "Name": {
+        "@Core.IsLanguageDependent": true
+      },
+      "Products": {
+        "$Collection": true,
+        "$Kind": "NavigationProperty",
+        "$OnDelete": "Cascade",
+        "$Partner": "Category",
+        "$Type": "self.Product"
+      }
+    },
+    "Country": {
+      "$Key": [
+        "Code"
+      ],
+      "$Kind": "EntityType",
+      "Code": {
+        "$MaxLength": 2
+      },
+      "Name": {
+        "$Nullable": true
+      }
+    },
+    "DemoService": {
+      "$Kind": "EntityContainer",
+      "Categories": {
+        "$Collection": true,
+        "$NavigationPropertyBinding": {
+          "Products": "Products"
+        },
+        "$Type": "self.Category",
+        "@Core.Description": "Product Categories"
+      },
+      "Countries": {
+        "$Collection": true,
+        "$Type": "self.Country"
+      },
+      "MainSupplier": {
+        "$NavigationPropertyBinding": {
+          "Products": "Products"
+        },
+        "$Type": "self.Supplier",
+        "@Core.Description": "Primary Supplier"
+      },
+      "Products": {
+        "$Collection": true,
+        "$NavigationPropertyBinding": {
+          "Category": "Categories"
+        },
+        "$Type": "self.Product"
+      },
+      "ProductsByRating": {
+        "$EntitySet": "Products",
+        "$Function": "self.ProductsByRating"
+      },
+      "Suppliers": {
+        "$Collection": true,
+        "$NavigationPropertyBinding": {
+          "Address/Country": "Countries",
+          "Products": "Products"
+        },
+        "$Type": "self.Supplier",
+        "@Core.OptimisticConcurrency": [
+          "Concurrency"
+        ]
+      }
+    },
+    "FileAccess": {
+      "$IsFlags": true,
+      "$Kind": "EnumType",
+      "$UnderlyingType": "Edm.Int32",
+      "Create": 4,
+      "Delete": 8,
+      "Read": 1,
+      "Write": 2
+    },
+    "ProductsByRating": [
+      {
+        "$Kind": "Function",
+        "$Parameter": [
+          {
+            "$Name": "Rating",
+            "$Nullable": true,
+            "$Type": "Edm.Int32"
+          }
+        ],
+        "$ReturnType": {
+          "$Collection": true,
+          "$Type": "self.Product"
+        }
+      }
+    ],
+    "Supplier": {
+      "$Key": [
+        "ID"
+      ],
+      "$Kind": "EntityType",
+      "Address": {
+        "$Type": "self.Address"
+      },
+      "Concurrency": {
+        "$Type": "Edm.Int32"
+      },
+      "ID": {},
+      "Name": {
+        "$Nullable": true
+      },
+      "Products": {
+        "$Collection": true,
+        "$Kind": "NavigationProperty",
+        "$Partner": "Supplier",
+        "$Type": "self.Product"
+      }
+    }
+  }
+}

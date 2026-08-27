@@ -1,0 +1,205 @@
+{
+  "additionalInterfaces": [
+    {
+      "transport": "JSONRPC",
+      "url": "https://api.sap.foo.com/fica-dispute-agent/v1"
+    }
+  ],
+  "capabilities": {
+    "pushNotifications": false,
+    "stateTransitionHistory": false,
+    "streaming": false
+  },
+  "defaultInputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "defaultOutputModes": [
+    "text/plain",
+    "application/json"
+  ],
+  "description": "AI agent specialized in financial dispute case resolution with focus on reconciling invoiced amounts against contract terms. Automatically retrieves dispute cases, recalculates invoice amounts based on contractual terms, identifies valid discrepancies, and processes credit memos through established workflows.",
+  "name": "FI-CA Dispute Resolution Agent",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3.0",
+  "provider": {
+    "organization": "SAP SE",
+    "url": "https://www.sap.com"
+  },
+  "security": [
+    {
+      "oauth2": [
+        "dispute:read",
+        "dispute:write",
+        "billing:read",
+        "billing:write"
+      ]
+    },
+    {
+      "apiKey": []
+    }
+  ],
+  "securitySchemes": {
+    "apiKey": {
+      "in": "header",
+      "name": "X-API-Key",
+      "type": "apiKey"
+    },
+    "oauth2": {
+      "flows": {
+        "authorizationCode": {
+          "authorizationUrl": "https://accounts.sap.foo.com/oauth2/authorize",
+          "scopes": {
+            "billing:read": "Read billing and invoice information",
+            "billing:write": "Create credit memos and billing requests",
+            "dispute:read": "Read dispute case information",
+            "dispute:write": "Create and modify dispute cases"
+          },
+          "tokenUrl": "https://accounts.sap.foo.com/oauth2/token"
+        }
+      },
+      "type": "oauth2"
+    }
+  },
+  "skills": [
+    {
+      "description": "Processes FI-CA dispute cases of type 'A001 (Incorrect Invoice)' by retrieving case data, recalculating invoice amounts based on contract terms, identifying discrepancies, and automatically creating credit memos when valid discrepancies are found.",
+      "examples": [
+        "Resolve dispute case 24240",
+        "Process the incorrect invoice dispute for case ID 12345",
+        "Analyze and resolve dispute case with contract recalculation"
+      ],
+      "id": "dispute-case-resolution",
+      "inputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "name": "Automated Dispute Case Resolution",
+      "outputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "security": [
+        {
+          "oauth2": [
+            "dispute:read",
+            "dispute:write",
+            "billing:read",
+            "billing:write"
+          ]
+        }
+      ],
+      "tags": [
+        "finance",
+        "billing",
+        "dispute-resolution",
+        "invoicing",
+        "credit-memo",
+        "contract-analysis"
+      ]
+    },
+    {
+      "description": "Retrieves and verifies dispute case information including disputed amounts, invoice line items, contract attachments, and dispute notes. Validates data completeness and currency consistency before processing.",
+      "examples": [
+        "Verify dispute case data for case 24240",
+        "Check if dispute case has complete information for processing",
+        "Validate contract attachment and invoice details"
+      ],
+      "id": "dispute-case-verification",
+      "inputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "name": "Dispute Case Data Verification",
+      "outputModes": [
+        "text/plain",
+        "application/json"
+      ],
+      "security": [
+        {
+          "oauth2": [
+            "dispute:read",
+            "billing:read"
+          ]
+        }
+      ],
+      "tags": [
+        "verification",
+        "data-validation",
+        "dispute-analysis",
+        "contract-review"
+      ]
+    },
+    {
+      "description": "Recalculates invoice amounts based on contract terms including base fees, adjustment rates, and time-based adjustments. Handles complex calculations with tax inclusion/exclusion and period-based adjustments.",
+      "examples": [
+        "Recalculate invoice amount based on contract terms",
+        "Apply contract adjustments for the invoice due date",
+        "Calculate correct billing amount with time-based rate adjustments"
+      ],
+      "id": "invoice-recalculation",
+      "inputModes": [
+        "application/json"
+      ],
+      "name": "Contract-Based Invoice Recalculation",
+      "outputModes": [
+        "application/json"
+      ],
+      "security": [
+        {
+          "oauth2": [
+            "billing:read"
+          ]
+        }
+      ],
+      "tags": [
+        "calculation",
+        "contract-analysis",
+        "invoice-verification",
+        "financial-analysis"
+      ]
+    },
+    {
+      "description": "Creates credit memos for valid dispute amounts, sets billing request status to 'ForChecking', updates dispute case status to 'Being Processed', and handles the complete credit memo lifecycle including release and dispute case closure.",
+      "examples": [
+        "Create credit memo for dispute amount €150.00",
+        "Process and release credit memo for resolved dispute",
+        "Generate credit memo and close dispute case"
+      ],
+      "id": "credit-memo-processing",
+      "inputModes": [
+        "application/json"
+      ],
+      "name": "Credit Memo Creation and Processing",
+      "outputModes": [
+        "application/json"
+      ],
+      "security": [
+        {
+          "oauth2": [
+            "billing:write",
+            "dispute:write"
+          ]
+        }
+      ],
+      "tags": [
+        "credit-memo",
+        "billing",
+        "financial-processing",
+        "workflow-automation"
+      ]
+    }
+  ],
+  "supportsAuthenticatedExtendedCard": false,
+  "url": "https://api.sap.foo.com/fica-dispute-agent/v1",
+  "url-template": {
+    "params": {
+      "tenantId": {
+        "description": "The tenant ID for the SAP system, e.g., 'tenant1', 'customerA'.",
+        "type": "string"
+      }
+    },
+    "url": "https://{tenantId}.sap.foo.com/fica-dispute-agent/v1"
+  },
+  "version": "1.0.5"
+}

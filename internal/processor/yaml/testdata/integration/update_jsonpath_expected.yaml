@@ -1,0 +1,171 @@
+$schema: https://pages.github.tools.sap/CPA/mcp-protocol/spec-v1/mcp-server-card-spec.schema.json
+_meta:
+    sap/category: AI Tools
+    sap/owner: team-ai-services
+capabilities:
+    resources: {}
+description: MCP server for Brave Search API integration
+name: io.modelcontextprotocol.anonymous/brave-search
+prompts:
+    - arguments:
+        - description: A book title argument for the prompt
+          name: book_title
+          required: true
+      description: This prompt will read a book and generate a report based on the book title
+      name: generate-book-report
+remotes:
+    - type: streamable-http
+      url: https://example.com/mcp
+resources:
+    - description: This is the SAP logo
+      mimeType: image/svg+xml
+      name: catalogservice-resource-sap_logo
+      uri: https://www.sap.com/dam/application/shared/logos/sap-logo-svg.svg/sap-logo-svg.svg
+supportedProtocolVersions:
+    - "2025-11-25"
+    - "2025-06-18"
+    - "2025-03-26"
+    - "2024-11-05"
+title: Example Bookshop Catalog Server
+tools:
+    - _meta:
+        sap.joule/joule_enabled: true
+        sap.joule/visibility_condition:
+            objects:
+                - attributes:
+                    - attribute: sap_licenses
+                      match_mode: ANY
+                      values:
+                        - SAP_JOULE_PREMIUM_FINANCE
+                  type: ias_attributes
+        sap/accessLevel: authenticated-user
+      description: This tool for entity CatalogService.Books will READ Bookshop Catalog Service
+      inputSchema:
+        $schema: http://json-schema.org/draft-07/schema#
+        additionalProperties: false
+        properties:
+            ID:
+                description: Unique identifier of the book
+                type: integer
+            author:
+                description: Author associated with this book
+            descr:
+                description: Detailed description of the book
+                maxLength: 1111
+                type: string
+            localized: {}
+            stock:
+                description: Available quantity in stock
+                type: integer
+            texts: {}
+            title:
+                description: Title of the book
+                maxLength: 111
+                type: string
+        type: object
+      name: catalogservice-books-read
+    - description: This tool for entity CatalogService.Books will CREATE Bookshop Catalog Service
+      inputSchema:
+        $schema: http://json-schema.org/draft-07/schema#
+        additionalProperties: false
+        properties:
+            ID:
+                description: Unique identifier of the book
+                type: integer
+            author:
+                description: Author associated with this book
+            descr:
+                description: Detailed description of the book
+                maxLength: 1111
+                type: string
+            localized: {}
+            stock:
+                description: Available quantity in stock
+                type: integer
+            texts: {}
+            title:
+                description: Title of the book
+                maxLength: 111
+                type: string
+        required:
+            - title
+        type: object
+      name: catalogservice-books-create
+    - description: This tool for entity CatalogService.Books will UPDATE Bookshop Catalog Service
+      inputSchema:
+        $schema: http://json-schema.org/draft-07/schema#
+        additionalProperties: false
+        properties:
+            ID:
+                description: Unique identifier of the book
+                type: integer
+            author:
+                description: Author associated with this book
+            descr:
+                description: Detailed description of the book
+                maxLength: 1111
+                type: string
+            localized: {}
+            stock:
+                description: Available quantity in stock
+                type: integer
+            texts: {}
+            title:
+                description: Title of the book
+                maxLength: 111
+                type: string
+        required:
+            - title
+        type: object
+      name: catalogservice-books-update
+    - description: This tool for entity CatalogService.Books will DELETE Bookshop Catalog Service
+      inputSchema:
+        $schema: http://json-schema.org/draft-07/schema#
+        additionalProperties: false
+        properties:
+            ID:
+                description: Unique identifier of the book
+                type: integer
+            author:
+                description: Author associated with this book
+            descr:
+                description: Detailed description of the book
+                maxLength: 1111
+                type: string
+            localized: {}
+            stock:
+                description: Available quantity in stock
+                type: integer
+            texts: {}
+            title:
+                description: Title of the book
+                maxLength: 111
+                type: string
+        required:
+            - title
+        type: object
+      name: catalogservice-books-delete
+    - description: This tool CatalogService.booksByTitle will Get books by title name - and act as cds function
+      inputSchema:
+        $schema: http://json-schema.org/draft-07/schema#
+        additionalProperties: false
+        properties:
+            title:
+                description: The title of the book to search for
+                type: string
+        type: object
+      name: catalogservice-booksbytitle
+    - description: This tool CatalogService.rentBookFromOtherLibrary will Rents a random books from other library catalog based on title - and act as cds function
+      inputSchema:
+        $schema: http://json-schema.org/draft-07/schema#
+        additionalProperties: false
+        properties:
+            title:
+                description: The title of the book to rent
+                type: string
+        required:
+            - title
+        type: object
+      name: catalogservice-rentbookfromotherlibrary
+version: 1.0.0
+websiteUrl: https://anonymous.modelcontextprotocol.io/examples

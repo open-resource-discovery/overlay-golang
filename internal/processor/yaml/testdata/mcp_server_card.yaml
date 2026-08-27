@@ -1,0 +1,178 @@
+---
+"$schema": https://pages.github.tools.sap/CPA/mcp-protocol/spec-v1/mcp-server-card-spec.schema.json
+name: io.modelcontextprotocol.anonymous/brave-search
+title: Example Bookshop Catalog Server
+version: 1.0.0
+description: MCP server for Brave Search API integration
+websiteUrl: https://anonymous.modelcontextprotocol.io/examples
+_meta:
+  sap/category: TBD
+remotes:
+  - type: streamable-http
+    url: https://example.com/mcp
+capabilities:
+  resources: {}
+supportedProtocolVersions:
+  - '2025-11-25'
+  - '2025-06-18'
+  - '2025-03-26'
+  - '2024-11-05'
+tools:
+  - name: catalogservice-books-read
+    description: This tool for entity CatalogService.Books will READ Bookshop Catalog
+      Service
+    _meta:
+      sap/accessLevel: authenticated-user
+      sap.joule/joule_enabled: true
+      sap.joule/visibility_condition:
+        objects:
+          - type: ias_attributes
+            attributes:
+              - attribute: sap_licenses
+                match_mode: ANY
+                values:
+                  - SAP_JOULE_PREMIUM_FINANCE
+    inputSchema:
+      type: object
+      properties:
+        ID:
+          type: integer
+          description: Unique identifier of the book
+        title:
+          type: string
+          maxLength: 111
+          description: Title of the book
+        descr:
+          type: string
+          maxLength: 1111
+          description: Detailed description of the book
+        stock:
+          type: integer
+          description: Available quantity in stock
+        author:
+          description: Author associated with this book
+        texts: {}
+        localized: {}
+      additionalProperties: false
+      "$schema": http://json-schema.org/draft-07/schema#
+  - name: catalogservice-books-create
+    description: This tool for entity CatalogService.Books will CREATE Bookshop Catalog
+      Service
+    inputSchema:
+      type: object
+      properties:
+        ID:
+          type: integer
+          description: Unique identifier of the book
+        title:
+          type: string
+          maxLength: 111
+          description: Title of the book
+        descr:
+          type: string
+          maxLength: 1111
+          description: Detailed description of the book
+        stock:
+          type: integer
+          description: Available quantity in stock
+        author:
+          description: Author associated with this book
+        texts: {}
+        localized: {}
+      required:
+        - title
+      additionalProperties: false
+      "$schema": http://json-schema.org/draft-07/schema#
+  - name: catalogservice-books-update
+    description: This tool for entity CatalogService.Books will UPDATE Bookshop Catalog
+      Service
+    inputSchema:
+      type: object
+      properties:
+        ID:
+          type: integer
+          description: Unique identifier of the book
+        title:
+          type: string
+          maxLength: 111
+          description: Title of the book
+        descr:
+          type: string
+          maxLength: 1111
+          description: Detailed description of the book
+        stock:
+          type: integer
+          description: Available quantity in stock
+        author:
+          description: Author associated with this book
+        texts: {}
+        localized: {}
+      required:
+        - title
+      additionalProperties: false
+      "$schema": http://json-schema.org/draft-07/schema#
+  - name: catalogservice-books-delete
+    description: This tool for entity CatalogService.Books will DELETE Bookshop Catalog
+      Service
+    inputSchema:
+      type: object
+      properties:
+        ID:
+          type: integer
+          description: Unique identifier of the book
+        title:
+          type: string
+          maxLength: 111
+          description: Title of the book
+        descr:
+          type: string
+          maxLength: 1111
+          description: Detailed description of the book
+        stock:
+          type: integer
+          description: Available quantity in stock
+        author:
+          description: Author associated with this book
+        texts: {}
+        localized: {}
+      required:
+        - title
+      additionalProperties: false
+      "$schema": http://json-schema.org/draft-07/schema#
+  - name: catalogservice-booksbytitle
+    description: This tool CatalogService.booksByTitle will Get books by title name
+      - and act as cds function
+    inputSchema:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The title of the book to search for
+      additionalProperties: false
+      "$schema": http://json-schema.org/draft-07/schema#
+  - name: catalogservice-rentbookfromotherlibrary
+    description: This tool CatalogService.rentBookFromOtherLibrary will Rents a random
+      books from other library catalog based on title - and act as cds function
+    inputSchema:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The title of the book to rent
+      required:
+        - title
+      additionalProperties: false
+      "$schema": http://json-schema.org/draft-07/schema#
+resources:
+  - uri: https://www.sap.com/dam/application/shared/logos/sap-logo-svg.svg/sap-logo-svg.svg
+    name: catalogservice-resource-sap_logo
+    mimeType: image/svg+xml
+    description: This is the SAP logo
+prompts:
+  - name: generate-book-report
+    description: This prompt will read a book and generate a report based on the book
+      title
+    arguments:
+      - name: book_title
+        description: A book title argument for the prompt
+        required: true

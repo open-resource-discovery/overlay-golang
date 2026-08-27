@@ -1,0 +1,31 @@
+# Optional: custom default message on matches
+defaultMessage: >
+  Please consider inclusive alternatives. See CONTRIBUTING.md#inclusive-language.
+
+# Tune severities per rule/term (add/remove as you like)
+rules:
+  master:
+    level: warning
+  slave:
+    level: failure
+  whitelist:
+    level: warning
+  blacklist:
+    level: warning
+  sanity:
+    level: notice
+  # Example of a custom regex rule
+  # foo:
+  #   regex:
+  #     - /foo/gi
+  #     - /foobar/gi
+  #   level: warning
+
+# Files to ignore (the first two are defaults in the app)
+ignore:
+  - ".github/in-solidarity.yml"
+  - "**/*.yml"
+  - "**/*.png"
+  - "**/*.jpg"
+  - "**/*.svg"
+  - "LICENSE"
