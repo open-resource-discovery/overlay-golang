@@ -1,5 +1,5 @@
 [![REUSE status](https://api.reuse.software/badge/github.com/open-resource-discovery/overlay-golang)](https://api.reuse.software/info/github.com/open-resource-discovery/overlay-golang)
-[![CI](https://img.shields.io/github/actions/workflow/status/open-resource-discovery/overlay-golang/ci.yml?label=CI)](https://github.com/open-resource-discovery/overlay-golang/actions/workflows/ci.yml)
+[![CI](https://github.com/open-resource-discovery/overlay-golang/actions/workflows/ci.yml/badge.svg)](https://github.com/open-resource-discovery/overlay-golang/actions/workflows/ci.yml)
 
 # ORD Overlay Golang Library
 
