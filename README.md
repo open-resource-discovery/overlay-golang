@@ -3,8 +3,6 @@
 
 # ORD Overlay Golang Library
 
-## About this project
-
 Library for applying [Open Resource Discovery Overlay](https://open-resource-discovery.org/spec-v1/interfaces/OrdOverlay) patches to API resource definition files. It lets you enrich or adapt OpenAPI, OData CSDL/EDMX, CSN, A2A Agent Card, and generic JSON/YAML documents without modifying the original sources.
 
 ## Requirements and Setup
