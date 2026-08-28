@@ -1,5 +1,7 @@
 [![REUSE status](https://api.reuse.software/badge/github.com/open-resource-discovery/overlay-golang)](https://api.reuse.software/info/github.com/open-resource-discovery/overlay-golang)
 [![CI](https://github.com/open-resource-discovery/overlay-golang/actions/workflows/ci.yml/badge.svg)](https://github.com/open-resource-discovery/overlay-golang/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fopen-resource-discovery%2Foverlay-golang%2Freleases%2Flatest&query=%24.tag_name&label=Latest%20Release)](https://github.com/open-resource-discovery/overlay-golang/releases/latest)
+
 
 # ORD Overlay Golang Library
 
