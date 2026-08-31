@@ -545,41 +545,26 @@ func TestApply_MergeSelector_NotFound_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestApply_Merge_JSONPath_NotFound_CreatesNode(t *testing.T) {
-	// When a JSONPath selector points to a non-existent node, merge now creates it.
+func TestApply_Merge_JSONPath_NotFound_ReturnsError(t *testing.T) {
+	// A selector that matches nothing is an error: overlays never create a
+	// missing target, not even via jsonPath.
 	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
-	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
+	_, err := p.Apply(testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.nonexistent"},
 		map[string]any{"x": "created"}))
-	node, exists := result["nonexistent"]
-	if !exists {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("nonexistent: expected map, got %T", node)
-	}
-	if m["x"] != "created" {
-		t.Errorf("nonexistent.x: got %v, want %q", m["x"], "created")
+	if err == nil {
+		t.Fatal("expected an error for a merge that matches no existing node, got nil")
 	}
 }
 
-func TestApply_Update_JSONPath_NotFound_CreatesNode(t *testing.T) {
-	// When a JSONPath selector points to a non-existent node, update now creates it.
+func TestApply_Update_JSONPath_NotFound_ReturnsError(t *testing.T) {
+	// An update via a non-existent JSONPath is an error, not a create.
 	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
-	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
+	_, err := p.Apply(testutils.OnePatch("update",
 		model.Selector{JSONPath: "$.newnode"},
 		map[string]any{"key": "value"}))
-	node, exists := result["newnode"]
-	if !exists {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("newnode: expected map, got %T", node)
-	}
-	if m["key"] != "value" {
-		t.Errorf("newnode.key: got %v, want %q", m["key"], "value")
+	if err == nil {
+		t.Fatal("expected an error for an update that matches no existing node, got nil")
 	}
 }
 

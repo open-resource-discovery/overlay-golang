@@ -97,7 +97,10 @@ func (self *OverlayProcessor) merge(content map[string]any, expression jp.Expr, 
 		return utils.SafeCast[map[string]any](utils.DeepMerge(content, value)), nil
 	}
 
-	// allows for create or update behavior here
+	// Semantic selectors decompose into annotation-leaf writes onto an
+	// already-validated element; the leaf key itself does not pre-exist, so we
+	// Set it. Raw jsonPath no-match is rejected earlier in decompose, so this
+	// never fabricates a user-typo'd target.
 	for _, location := range utils.Ternary(!expression.Has(content), []jp.Expr{expression}, expression.Locate(content, 0)) {
 		if err := location.Set(content, utils.DeepMerge(location.First(content), value)); err != nil {
 			return nil, err
@@ -112,7 +115,8 @@ func (self *OverlayProcessor) update(content map[string]any, expression jp.Expr,
 		return maps.Clone(utils.SafeCast[map[string]any](value)), nil
 	}
 
-	// allows for create or update behavior here
+	// See merge: annotation-leaf writes Set a not-yet-existing leaf; raw
+	// jsonPath no-match is rejected earlier in decompose.
 	for _, location := range utils.Ternary(!expression.Has(content), []jp.Expr{expression}, expression.Locate(content, 0)) {
 		if err := location.Set(content, value); err != nil {
 			return nil, err
@@ -192,6 +196,20 @@ func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, 
 
 func (self *OverlayProcessor) decomposeSyntacticSelector(content map[string]any, patch model.Patch) ([]model.Patch, error) {
 	if patch.Data == nil || utils.OneOf(patch.Action, "merge", "update") {
+		// A raw jsonPath merge/update must match existing structure: overlays
+		// never create a missing target. (Semantic selectors validate the
+		// element during decomposition and add their annotation leaves onto it,
+		// so they do not pass through here. remove is a no-op on no-match.)
+		if utils.OneOf(patch.Action, "merge", "update") && len(patch.Selector.JSONPath) > 0 {
+			expression, err := jp.ParseString(patch.Selector.JSONPath)
+			if err != nil {
+				return nil, err
+			}
+			if !expression.Has(content) {
+				return nil, errors.Errorf("no such element: %s", expression.String())
+			}
+		}
+
 		return []model.Patch{patch}, nil
 	}
 

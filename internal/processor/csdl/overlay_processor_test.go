@@ -290,11 +290,11 @@ func TestApply_Merge_JSONPath_AddsKey(t *testing.T) {
 	}
 }
 
-func TestApply_Merge_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
-	// JSONPath selectors may now point to non-existing parts of the document.
-	// A merge via a non-existent path creates the node rather than being a no-op.
+func TestApply_Merge_JSONPath_NonExistentPath_ReturnsError(t *testing.T) {
+	// A selector that matches nothing is an error: overlays never create a
+	// missing target, not even via jsonPath.
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
-	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
+	_, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "merge",
@@ -303,23 +303,15 @@ func TestApply_Merge_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 			},
 		}},
 	})
-	node := testutils.Get(t, result, "ODataDemo", "NonExistent")
-	if node == nil {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("ODataDemo.NonExistent: expected map, got %T", node)
-	}
-	if m["@x"] != "created" {
-		t.Errorf("ODataDemo.NonExistent['@x']: got %v, want %q", m["@x"], "created")
+	if err == nil {
+		t.Fatal("expected an error for a merge that matches no existing node, got nil")
 	}
 }
 
-func TestApply_Update_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
-	// An update via a non-existent JSONPath creates the node rather than being a no-op.
+func TestApply_Update_JSONPath_NonExistentPath_ReturnsError(t *testing.T) {
+	// An update via a non-existent JSONPath is an error, not a create.
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
-	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
+	_, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "update",
@@ -328,16 +320,8 @@ func TestApply_Update_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 			},
 		}},
 	})
-	node := testutils.Get(t, result, "ODataDemo", "NewNode")
-	if node == nil {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("ODataDemo.NewNode: expected map, got %T", node)
-	}
-	if m["@x"] != "value" {
-		t.Errorf("ODataDemo.NewNode['@x']: got %v, want %q", m["@x"], "value")
+	if err == nil {
+		t.Fatal("expected an error for an update that matches no existing node, got nil")
 	}
 }
 

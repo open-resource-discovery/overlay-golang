@@ -87,8 +87,12 @@ func (self *OverlayProcessor) merge(content map[string]any, expression jp.Expr, 
 		return utils.SafeCast[map[string]any](utils.DeepMerge(content, value)), nil
 	}
 
-	// allows for create or update behavior here
-	for _, location := range utils.Ternary(!expression.Has(content), []jp.Expr{expression}, expression.Locate(content, 0)) {
+	// no create-on-missing: a selector that matches nothing is an error
+	if !expression.Has(content) {
+		return nil, errors.Errorf("no such element: %s", expression.String())
+	}
+
+	for _, location := range expression.Locate(content, 0) {
 		if err := location.Set(content, utils.DeepMerge(location.First(content), value)); err != nil {
 			return nil, err
 		}
@@ -102,8 +106,12 @@ func (self *OverlayProcessor) update(content map[string]any, expression jp.Expr,
 		return maps.Clone(utils.SafeCast[map[string]any](value)), nil
 	}
 
-	// allows for create or update behavior here
-	for _, location := range utils.Ternary(!expression.Has(content), []jp.Expr{expression}, expression.Locate(content, 0)) {
+	// no create-on-missing: a selector that matches nothing is an error
+	if !expression.Has(content) {
+		return nil, errors.Errorf("no such element: %s", expression.String())
+	}
+
+	for _, location := range expression.Locate(content, 0) {
 		if err := location.Set(content, value); err != nil {
 			return nil, err
 		}

@@ -641,10 +641,10 @@ func TestApply_UnknownAction_ReturnsError_JSON(t *testing.T) {
 	}
 }
 
-func TestApply_JSONPath_NotFound_Merge_CreatesNode_JSON(t *testing.T) {
-	// JSONPath selectors may now point to non-existing parts of the document.
-	// A merge via a non-existent path creates the node rather than being a no-op.
-	result := applyJSON(t, newJSONProcessor(t), model.OverlayDefinition{
+func TestApply_JSONPath_NotFound_Merge_ReturnsError_JSON(t *testing.T) {
+	// A selector that matches nothing is an error: overlays never create a
+	// missing target, not even via jsonPath.
+	_, err := newJSONProcessor(t).Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "merge",
@@ -653,22 +653,14 @@ func TestApply_JSONPath_NotFound_Merge_CreatesNode_JSON(t *testing.T) {
 			},
 		}},
 	})
-	node, exists := result["nonexistent"]
-	if !exists {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("nonexistent: expected map, got %T", node)
-	}
-	if m["key"] != "created" {
-		t.Errorf("nonexistent.key: got %v, want %q", m["key"], "created")
+	if err == nil {
+		t.Fatal("expected an error for a merge that matches no existing node, got nil")
 	}
 }
 
-func TestApply_JSONPath_NotFound_Update_CreatesNode_JSON(t *testing.T) {
-	// An update via a non-existent JSONPath creates the node rather than being a no-op.
-	result := applyJSON(t, newJSONProcessor(t), model.OverlayDefinition{
+func TestApply_JSONPath_NotFound_Update_ReturnsError_JSON(t *testing.T) {
+	// An update via a non-existent JSONPath is an error, not a create.
+	_, err := newJSONProcessor(t).Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "update",
@@ -677,22 +669,14 @@ func TestApply_JSONPath_NotFound_Update_CreatesNode_JSON(t *testing.T) {
 			},
 		}},
 	})
-	node, exists := result["newnode"]
-	if !exists {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("newnode: expected map, got %T", node)
-	}
-	if m["key"] != "value" {
-		t.Errorf("newnode.key: got %v, want %q", m["key"], "value")
+	if err == nil {
+		t.Fatal("expected an error for an update that matches no existing node, got nil")
 	}
 }
 
-func TestApply_JSONPath_NotFound_Merge_CreatesNode_YAML(t *testing.T) {
-	// Same creation behavior applies for YAML documents.
-	result := applyYAML(t, newYAMLProcessor(t), model.OverlayDefinition{
+func TestApply_JSONPath_NotFound_Merge_ReturnsError_YAML(t *testing.T) {
+	// Same no-create behavior applies for YAML documents.
+	_, err := newYAMLProcessor(t).Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "merge",
@@ -701,16 +685,8 @@ func TestApply_JSONPath_NotFound_Merge_CreatesNode_YAML(t *testing.T) {
 			},
 		}},
 	})
-	node, exists := result["nonexistent"]
-	if !exists {
-		t.Fatal("expected node to be created for non-existent JSONPath (YAML), but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("nonexistent: expected map, got %T", node)
-	}
-	if m["key"] != "created" {
-		t.Errorf("nonexistent.key: got %v, want %q", m["key"], "created")
+	if err == nil {
+		t.Fatal("expected an error for a merge that matches no existing node (YAML), got nil")
 	}
 }
 
