@@ -183,7 +183,7 @@ Exactly one field should be set per patch. Concept-level selectors are preferred
 
 These reflect what the ORD Overlay spec currently defines and how this library implements it. They are documented here so callers do not rely on unspecified behavior.
 
-- **No-match / create-on-missing.** A `merge` or `update` whose `JSONPath` target does not yet exist creates it. Concept-level selectors (`EntityType`, `Operation`, `PropertyType`, etc.) match only structure the source already declares and do not synthesize modeled concepts.
+- **No-match / create-on-missing.** The resolved ORD Overlay spec direction is that no selector creates a missing target: a `merge` or `update` whose selector matches nothing MUST error. Concept-level selectors (`EntityType`, `Operation`, `PropertyType`, etc.) already behave this way. **Known deviation:** this library still *creates* the node when a `JSONPath` target does not yet exist, which predates that decision and will be changed to error. Do not rely on create-on-missing; a future version may reintroduce it behind a dedicated create action.
 - **EDMX targets are annotation-only.** For the `edmx` (OData XML) processor, overlays add, replace, and remove annotations on existing structure. They cannot create new structural elements (EntityType, EntitySet, Property, Function/Action, EnumType, ComplexType); those must already exist in the source schema. Combined with the note above (no `Root`/`JSONPath` for `edmx`), there is no structural-authoring path. New structure belongs in the source CSDL/CDS, not in an overlay.
 - **CSDL JSON enum members** are scalars, so member annotations are written as sibling keys on the enum type (`Read@Core.Description`), not merged into the member value.
 
