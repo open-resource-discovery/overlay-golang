@@ -31,13 +31,24 @@ func assertXML(t *testing.T, node xml2json.Node, wantXML string) {
 	}
 }
 
+// mustConvert calls Convert and fails the test if it returns an error,
+// returning the node for the happy-path assertions.
+func mustConvert(t *testing.T, name string, value any) xml2json.Node {
+	t.Helper()
+	node, err := AnnotationConverter(0).Convert(name, value)
+	if err != nil {
+		t.Fatalf("Convert(%q): unexpected error: %v", name, err)
+	}
+	return node
+}
+
 // ---- Convert: scalar values -------------------------------------------------
 
 func TestConvert_StringValue_ProducesInlineAnnotation(t *testing.T) {
 	// NewAttributes("Term", "@Core.Description", "String", "A book") →
 	// sorted: String="A book" Term="@Core.Description"
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Core.Description", "A book"),
+		mustConvert(t, "@Core.Description", "A book"),
 		`<Annotation Term="Core.Description" String="A book" />`,
 	)
 }
@@ -46,14 +57,14 @@ func TestConvert_BoolValue_True_ProducesInlineAnnotation(t *testing.T) {
 	// NewAttributes("Term", "@Core.Computed", "Bool", "true") →
 	// sorted: Bool="true" Term="@Core.Computed"
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Core.Computed", true),
+		mustConvert(t, "@Core.Computed", true),
 		`<Annotation Term="Core.Computed" Bool="true" />`,
 	)
 }
 
 func TestConvert_BoolValue_False_ProducesInlineAnnotation(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Core.Computed", false),
+		mustConvert(t, "@Core.Computed", false),
 		`<Annotation Term="Core.Computed" Bool="false" />`,
 	)
 }
@@ -62,7 +73,7 @@ func TestConvert_IntValue_ProducesInlineAnnotation(t *testing.T) {
 	// NewAttributes("Term", "@MaxItems", "Int", "42") →
 	// sorted: Int="42" Term="@MaxItems"
 	assertXML(t,
-		AnnotationConverter(0).Convert("@MaxItems", 42),
+		mustConvert(t, "@MaxItems", 42),
 		`<Annotation Term="MaxItems" Int="42" />`,
 	)
 }
@@ -71,7 +82,7 @@ func TestConvert_FloatValue_ProducesInlineAnnotation(t *testing.T) {
 	// NewAttributes("Term", "@Scale", "Float", "3.14") →
 	// sorted: Float="3.14" Term="@Scale"
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Scale", float64(3.14)),
+		mustConvert(t, "@Scale", float64(3.14)),
 		`<Annotation Term="Scale" Float="3.14" />`,
 	)
 }
@@ -79,7 +90,7 @@ func TestConvert_FloatValue_ProducesInlineAnnotation(t *testing.T) {
 // ---- Convert: term name stripping -------------------------------------------
 
 func TestConvert_CollectionValue_TermAtPrefixStripped(t *testing.T) {
-	node := AnnotationConverter(0).Convert("@Capabilities.BatchSupportType", []any{"Single"})
+	node := mustConvert(t, "@Capabilities.BatchSupportType", []any{"Single"})
 	if node.Attribute("Term") != "Capabilities.BatchSupportType" {
 		t.Errorf("Term attribute: got %q, want %q", node.Attribute("Term"), "Capabilities.BatchSupportType")
 	}
@@ -89,7 +100,7 @@ func TestConvert_CollectionValue_TermAtPrefixStripped(t *testing.T) {
 
 func TestConvert_CollectionOfStrings_ProducesCollectionElement(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Capabilities.BatchSupportType", []any{"Single", "Transactional"}),
+		mustConvert(t, "@Capabilities.BatchSupportType", []any{"Single", "Transactional"}),
 		`<Annotation Term="Capabilities.BatchSupportType">
   <Collection>
     <String>Single</String>
@@ -101,7 +112,7 @@ func TestConvert_CollectionOfStrings_ProducesCollectionElement(t *testing.T) {
 
 func TestConvert_CollectionOfInts_ProducesCollectionElement(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Validation.AllowedValues", []any{1, 2, 3}),
+		mustConvert(t, "@Validation.AllowedValues", []any{1, 2, 3}),
 		`<Annotation Term="Validation.AllowedValues">
   <Collection>
     <Int>1</Int>
@@ -115,7 +126,7 @@ func TestConvert_CollectionOfInts_ProducesCollectionElement(t *testing.T) {
 func TestConvert_EmptyCollection_ProducesSelfClosingCollectionElement(t *testing.T) {
 	// An empty Collection has no children, so the serialiser emits a self-closing tag.
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Core.Links", []any{}),
+		mustConvert(t, "@Core.Links", []any{}),
 		`<Annotation Term="Core.Links">
   <Collection />
 </Annotation>`,
@@ -126,7 +137,7 @@ func TestConvert_EmptyCollection_ProducesSelfClosingCollectionElement(t *testing
 
 func TestConvert_RecordWithScalarBoolProperty_ProducesInlinePropertyValue(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Capabilities.InsertRestrictions", map[string]any{
+		mustConvert(t, "@Capabilities.InsertRestrictions", map[string]any{
 			"Insertable": false,
 		}),
 		`<Annotation Term="Capabilities.InsertRestrictions">
@@ -139,7 +150,7 @@ func TestConvert_RecordWithScalarBoolProperty_ProducesInlinePropertyValue(t *tes
 
 func TestConvert_RecordWithStringProperty_ProducesInlinePropertyValue(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Core.OptionalParameter", map[string]any{
+		mustConvert(t, "@Core.OptionalParameter", map[string]any{
 			"DefaultValue": "none",
 		}),
 		`<Annotation Term="Core.OptionalParameter">
@@ -152,7 +163,7 @@ func TestConvert_RecordWithStringProperty_ProducesInlinePropertyValue(t *testing
 
 func TestConvert_RecordWithNestedRecord_ProducesNestedRecordElement(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Capabilities.InsertRestrictions", map[string]any{
+		mustConvert(t, "@Capabilities.InsertRestrictions", map[string]any{
 			"QueryOptions": map[string]any{
 				"ExpandSupported": true,
 			},
@@ -171,7 +182,7 @@ func TestConvert_RecordWithNestedRecord_ProducesNestedRecordElement(t *testing.T
 
 func TestConvert_RecordWithCollectionProperty_ProducesCollectionInsideRecord(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Capabilities.InsertRestrictions", map[string]any{
+		mustConvert(t, "@Capabilities.InsertRestrictions", map[string]any{
 			"CustomHeaders": []any{"X-Request-ID", "X-Tenant"},
 		}),
 		`<Annotation Term="Capabilities.InsertRestrictions">
@@ -192,7 +203,7 @@ func TestConvert_RecordWithCollectionProperty_ProducesCollectionInsideRecord(t *
 func TestConvert_CollectionOfRecords_SingleRecord_ProducesRecordInsideCollection(t *testing.T) {
 	// Single-property record avoids map-iteration order non-determinism.
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Core.Links", []any{
+		mustConvert(t, "@Core.Links", []any{
 			map[string]any{"rel": "author"},
 		}),
 		`<Annotation Term="Core.Links">
@@ -205,22 +216,20 @@ func TestConvert_CollectionOfRecords_SingleRecord_ProducesRecordInsideCollection
 	)
 }
 
-// ---- resolveTypeName: panic on unsupported type -----------------------------
+// ---- resolveTypeName: error on unsupported type -----------------------------
 
-func TestConvert_UnsupportedScalarType_Panics(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("expected panic for unsupported value type, got none")
-		}
-	}()
-	AnnotationConverter(0).Convert("@Core.Description", []byte("unsupported"))
+func TestConvert_UnsupportedScalarType_ReturnsError(t *testing.T) {
+	_, err := AnnotationConverter(0).Convert("@Core.Description", []byte("unsupported"))
+	if err == nil {
+		t.Error("expected an error for an unsupported value type, got nil")
+	}
 }
 
 // ---- asCollectionElement: nested collection ---------------------------------
 
 func TestConvert_CollectionContainingCollection_ProducesNestedCollections(t *testing.T) {
 	assertXML(t,
-		AnnotationConverter(0).Convert("@Core.Links", []any{
+		mustConvert(t, "@Core.Links", []any{
 			[]any{"Single", "Transactional"},
 		}),
 		`<Annotation Term="Core.Links">

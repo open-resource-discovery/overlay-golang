@@ -63,13 +63,17 @@ func (self *OverlayProcessor) Apply(definition model.OverlayDefinition) (model.R
 	}), nil
 }
 
-func (self *OverlayProcessor) asAnnotations(data map[string]any) []xml2json.Node {
-	return utils.Map(
-		utils.Keys(data),
-		func(_ int, annotation string) xml2json.Node {
-			return self.Convert(annotation, data[annotation])
-		},
-	)
+func (self *OverlayProcessor) asAnnotations(data map[string]any) ([]xml2json.Node, error) {
+	nodes := make([]xml2json.Node, 0, len(data))
+	for _, annotation := range utils.Keys(data) {
+		node, err := self.Convert(annotation, data[annotation])
+		if err != nil {
+			return nil, err
+		}
+		nodes = append(nodes, node)
+	}
+
+	return nodes, nil
 }
 
 func (self *OverlayProcessor) reconcile(content xml2json.Document, pointer Pointer) (xml2json.Document, error) {
@@ -92,9 +96,17 @@ func (self *OverlayProcessor) process(patch model.Patch, content xml2json.Docume
 	case "remove":
 		return self.remove(content, pointer, utils.SafeCast[map[string]any](patch.Data))
 	case "merge":
-		return self.merge(content, pointer, self.asAnnotations(utils.SafeCast[map[string]any](patch.Data)))
+		annotations, err := self.asAnnotations(utils.SafeCast[map[string]any](patch.Data))
+		if err != nil {
+			return nil, err
+		}
+		return self.merge(content, pointer, annotations)
 	case "update":
-		return self.update(content, pointer, self.asAnnotations(utils.SafeCast[map[string]any](patch.Data)))
+		annotations, err := self.asAnnotations(utils.SafeCast[map[string]any](patch.Data))
+		if err != nil {
+			return nil, err
+		}
+		return self.update(content, pointer, annotations)
 	default:
 		return nil, errors.Errorf("unsupported patch action: %s", patch.Action)
 	}
@@ -116,6 +128,24 @@ func (self *OverlayProcessor) remove(content xml2json.Document, pointer Pointer,
 
 func (self *OverlayProcessor) merge(content xml2json.Document, pointer Pointer, annotations []xml2json.Node) (xml2json.Document, error) {
 	if expression := pointer.Annotations(); expression.Has(content) {
+		// Replace-by-Term: a single-valued OData term must not appear twice in
+		// one target block, so drop any existing <Annotation> whose Term an
+		// incoming annotation also carries, then append. Distinct Terms are
+		// preserved.
+		incoming := make(map[string]bool, len(annotations))
+		for _, node := range annotations {
+			incoming[node.Attribute("Term")] = true
+		}
+
+		content, err := xml2json.PruneNodes(
+			content,
+			expression,
+			func(node xml2json.Node) bool { return !incoming[node.Attribute("Term")] },
+		)
+		if err != nil {
+			return content, err
+		}
+
 		return xml2json.AppendNodes(content, expression, annotations...)
 	}
 

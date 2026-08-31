@@ -163,7 +163,37 @@ func TestApply_Merge_ExistingAnnotations_AppendsToBlock(t *testing.T) {
 	}
 }
 
-// ─── Apply — update action ────────────────────────────────────────────────────
+func TestApply_Merge_ExistingSameTerm_ReplacesInsteadOfDuplicating(t *testing.T) {
+	// Merging a Term that already exists in the target block must replace it,
+	// not append a second <Annotation Term="..."> (a single-valued term twice
+	// is invalid OData).
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" String="old"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     map[string]any{"@Core.Description": "new"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n := strings.Count(result.Content, `Term="Core.Description"`); n != 1 {
+		t.Errorf("expected exactly one Core.Description annotation, got %d:\n%s", n, result.Content)
+	}
+	if !strings.Contains(result.Content, `String="new"`) {
+		t.Errorf("expected merged value String=\"new\" in output:\n%s", result.Content)
+	}
+	if strings.Contains(result.Content, `String="old"`) {
+		t.Errorf("expected old value to be replaced, but String=\"old\" remains:\n%s", result.Content)
+	}
+}
 
 func TestApply_Update_NoExistingAnnotations_CreatesAnnotationsBlock(t *testing.T) {
 	p := newProcessor(t, minimalXML(""))
