@@ -2,6 +2,7 @@ package edmx
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/go-errors/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
@@ -9,6 +10,15 @@ import (
 )
 
 type AnnotationConverter byte
+
+func annotationAttributes(name string, values ...string) xml2json.Attributes {
+	term, qualifier, qualified := strings.Cut(strings.TrimPrefix(name, "@"), "#")
+	attributes := []string{"Term", term}
+	if qualified {
+		attributes = append(attributes, "Qualifier", qualifier)
+	}
+	return xml2json.NewAttributes(append(attributes, values...)...)
+}
 
 func (self AnnotationConverter) Convert(name string, value any) (xml2json.Node, error) {
 	switch value.(type) {
@@ -20,7 +30,7 @@ func (self AnnotationConverter) Convert(name string, value any) (xml2json.Node, 
 		return xml2json.NewElementNode(
 			"Annotation",
 			[]xml2json.Node{child},
-			xml2json.NewAttributes("Term", name[1:]),
+			annotationAttributes(name),
 		), nil
 	case map[string]any:
 		child, err := self.asRecordElement(value.(map[string]any))
@@ -30,7 +40,7 @@ func (self AnnotationConverter) Convert(name string, value any) (xml2json.Node, 
 		return xml2json.NewElementNode(
 			"Annotation",
 			[]xml2json.Node{child},
-			xml2json.NewAttributes("Term", name[1:]),
+			annotationAttributes(name),
 		), nil
 	default:
 		typeName, err := self.resolveTypeName(value)
@@ -40,7 +50,7 @@ func (self AnnotationConverter) Convert(name string, value any) (xml2json.Node, 
 		return xml2json.NewElementNode(
 			"Annotation",
 			[]xml2json.Node{},
-			xml2json.NewAttributes("Term", name[1:], typeName, fmt.Sprint(value)),
+			annotationAttributes(name, typeName, fmt.Sprint(value)),
 		), nil
 	}
 }

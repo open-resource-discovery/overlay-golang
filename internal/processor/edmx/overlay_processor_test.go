@@ -195,6 +195,36 @@ func TestApply_Merge_ExistingSameTerm_ReplacesInsteadOfDuplicating(t *testing.T)
 	}
 }
 
+func TestApply_Merge_SameTermDifferentQualifier_PreservesBoth(t *testing.T) {
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" String="base"/>
+        <Annotation Term="Core.Description" Qualifier="mobile" String="old"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     map[string]any{"@Core.Description#mobile": "new"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n := strings.Count(result.Content, `Term="Core.Description"`); n != 2 {
+		t.Errorf("expected unqualified and qualified annotations, got %d:\n%s", n, result.Content)
+	}
+	if !strings.Contains(result.Content, `Qualifier="mobile" String="new"`) {
+		t.Errorf("expected qualified annotation to be replaced:\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `String="base"`) {
+		t.Errorf("expected unqualified annotation to be preserved:\n%s", result.Content)
+	}
+}
+
 func TestApply_Update_NoExistingAnnotations_CreatesAnnotationsBlock(t *testing.T) {
 	p := newProcessor(t, minimalXML(""))
 	result, err := p.Apply(model.OverlayDefinition{
@@ -266,6 +296,34 @@ func TestApply_Remove_ExistingAnnotations_PrunesMatchingTerms(t *testing.T) {
 	}
 	if !strings.Contains(result.Content, "Core.LongDescription") {
 		t.Errorf("expected Core.LongDescription preserved in output:\n%s", result.Content)
+	}
+}
+
+func TestApply_Remove_QualifiedAnnotation_PreservesOtherQualifiers(t *testing.T) {
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" String="base"/>
+        <Annotation Term="Core.Description" Qualifier="mobile" String="mobile"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "remove",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     map[string]any{"@Core.Description#mobile": nil},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(result.Content, `Qualifier="mobile"`) {
+		t.Errorf("expected qualified annotation removed:\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `Term="Core.Description"`) ||
+		!strings.Contains(result.Content, `String="base"`) {
+		t.Errorf("expected unqualified annotation preserved:\n%s", result.Content)
 	}
 }
 

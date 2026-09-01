@@ -53,6 +53,13 @@ func TestConvert_StringValue_ProducesInlineAnnotation(t *testing.T) {
 	)
 }
 
+func TestConvert_QualifiedAnnotation_SeparatesTermAndQualifier(t *testing.T) {
+	assertXML(t,
+		mustConvert(t, "@Core.Description#mobile", "A book"),
+		`<Annotation Term="Core.Description" Qualifier="mobile" String="A book" />`,
+	)
+}
+
 func TestConvert_BoolValue_True_ProducesInlineAnnotation(t *testing.T) {
 	// NewAttributes("Term", "@Core.Computed", "Bool", "true") →
 	// sorted: Bool="true" Term="@Core.Computed"

@@ -119,7 +119,7 @@ func (self *OverlayProcessor) remove(content xml2json.Document, pointer Pointer,
 		return xml2json.PruneNodes(
 			content,
 			expression,
-			func(node xml2json.Node) bool { return !utils.ContainsKey(data, "@"+node.Attribute("Term")) },
+			func(node xml2json.Node) bool { return !utils.ContainsKey(data, annotationName(node)) },
 			true,
 		)
 	}
@@ -128,19 +128,17 @@ func (self *OverlayProcessor) remove(content xml2json.Document, pointer Pointer,
 
 func (self *OverlayProcessor) merge(content xml2json.Document, pointer Pointer, annotations []xml2json.Node) (xml2json.Document, error) {
 	if expression := pointer.Annotations(); expression.Has(content) {
-		// Replace-by-Term: a single-valued OData term must not appear twice in
-		// one target block, so drop any existing <Annotation> whose Term an
-		// incoming annotation also carries, then append. Distinct Terms are
-		// preserved.
+		// Replace annotations with the same term and qualifier, while preserving
+		// other qualifiers of the same term.
 		incoming := make(map[string]bool, len(annotations))
 		for _, node := range annotations {
-			incoming[node.Attribute("Term")] = true
+			incoming[annotationIdentity(node)] = true
 		}
 
 		content, err := xml2json.PruneNodes(
 			content,
 			expression,
-			func(node xml2json.Node) bool { return !incoming[node.Attribute("Term")] },
+			func(node xml2json.Node) bool { return !incoming[annotationIdentity(node)] },
 		)
 		if err != nil {
 			return content, err
@@ -154,6 +152,18 @@ func (self *OverlayProcessor) merge(content xml2json.Document, pointer Pointer, 
 		pointer.Schema(),
 		xml2json.NewElementNode("Annotations", annotations, xml2json.NewAttributes("Target", pointer.Target())),
 	)
+}
+
+func annotationIdentity(node xml2json.Node) string {
+	return node.Attribute("Term") + "\x00" + node.Attribute("Qualifier")
+}
+
+func annotationName(node xml2json.Node) string {
+	name := "@" + node.Attribute("Term")
+	if qualifier := node.Attribute("Qualifier"); qualifier != "" {
+		name += "#" + qualifier
+	}
+	return name
 }
 
 func (self *OverlayProcessor) update(content xml2json.Document, pointer Pointer, annotations []xml2json.Node) (xml2json.Document, error) {
