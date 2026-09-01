@@ -589,15 +589,15 @@ func TestApply_Remove_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 	}
 }
 
-func TestApply_Remove_Root_NilData_ClearsDocument(t *testing.T) {
+func TestApply_Remove_Root_NilData_ReturnsError(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: `{"key":"value"}`, MediaType: "application/json"}))
-	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
+	_, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "remove", Selector: &model.Selector{Root: utils.Ptr(true)}, Data: nil},
 		}},
 	})
-	if len(result) != 0 {
-		t.Errorf("expected empty document after root remove, got %v", result)
+	if err == nil {
+		t.Fatal("expected root remove to return an error")
 	}
 }
 

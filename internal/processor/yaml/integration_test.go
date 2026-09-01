@@ -84,17 +84,22 @@ func TestIntegration_Update_Root_ReplacesEntireDocument(t *testing.T) {
 
 // ---- remove: root selector --------------------------------------------------
 
-// TestIntegration_Remove_Root_ClearsDocument removes the root, producing {}.
-func TestIntegration_Remove_Root_ClearsDocument(t *testing.T) {
-	testutils.AssertDeepEquals(
-		t,
-		loadIntegrationExpected("remove_root_expected.yaml"),
-		applyIntegration(t, testutils.OnePatch(
-			"remove",
-			model.Selector{Root: utils.Ptr(true)},
-			nil,
-		)),
-	)
+func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
+	selectors := map[string]model.Selector{
+		"root selector": {Root: utils.Ptr(true)},
+		"root JSONPath": {JSONPath: "$"},
+	}
+	for name, selector := range selectors {
+		t.Run(name, func(t *testing.T) {
+			p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{
+				Content: integrationInput, MediaType: "application/yaml",
+			}))
+			_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
+			if err == nil {
+				t.Fatal("expected root remove to return an error")
+			}
+		})
+	}
 }
 
 // ---- merge: JSONPath selector -----------------------------------------------

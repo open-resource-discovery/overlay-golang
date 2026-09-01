@@ -559,8 +559,8 @@ func TestApply_Remove_NilData_RemovesTargetedNode_YAML(t *testing.T) {
 	}
 }
 
-func TestApply_RootSelector_Remove_ClearsDocument_JSON(t *testing.T) {
-	result := applyJSON(t, newJSONProcessor(t), model.OverlayDefinition{
+func TestApply_RootSelector_Remove_ReturnsError_JSON(t *testing.T) {
+	_, err := newJSONProcessor(t).Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "remove",
@@ -569,8 +569,8 @@ func TestApply_RootSelector_Remove_ClearsDocument_JSON(t *testing.T) {
 			},
 		}},
 	})
-	if len(result) != 0 {
-		t.Errorf("expected empty document after root remove, got %d keys", len(result))
+	if err == nil {
+		t.Fatal("expected root remove to return an error")
 	}
 }
 
