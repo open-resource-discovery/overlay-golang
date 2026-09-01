@@ -2,6 +2,7 @@ package pointers
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/go-errors/errors"
@@ -22,20 +23,16 @@ var resolvers = (func() *struct {
 		return strings.Join(utils.Second(utils.Pop(strings.Split(strings.Split(value, "(")[0], "."))), ".")
 	}
 	parameters := func(value string) []string {
-		opening := strings.Index(value, "(")
-		closing := strings.Index(value, ")")
-
-		if opening < 0 || closing < opening {
+		if !utils.First(regexp.MatchString(`.+\(.*\)$`, value)) {
 			return nil
 		}
 
-		if closing <= opening+1 {
-			return []string{}
-		}
-
-		return utils.Map(
-			strings.Split(value[opening+1:closing], ","),
-			func(_ int, value string) string { return strings.TrimSpace(value) },
+		return utils.Filter(
+			utils.Map(
+				strings.Split(value[strings.Index(value, "(")+1:len(value)-1], ","),
+				func(_ int, value string) string { return strings.TrimSpace(value) },
+			),
+			func(parameter string) bool { return len(parameter) > 0 },
 		)
 	}
 	signature := func(element xml2json.Node) string {
