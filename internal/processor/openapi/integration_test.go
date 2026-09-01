@@ -108,8 +108,28 @@ func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
 					MediaType: fmt.Sprintf("application/%s", format),
 				}))
 				_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
-				if err == nil {
-					t.Fatal("expected root remove to return an error")
+				if err == nil || err.Error() != "removing the document root is not supported" {
+					t.Fatalf("expected root-removal error, got %v", err)
+				}
+			})
+		}
+	}
+}
+
+func TestIntegration_Remove_RootMask_RemovesOnlySelectedFields(t *testing.T) {
+	selectors := map[string]model.Selector{
+		"root selector": {Root: utils.Ptr(true)},
+		"root JSONPath": {JSONPath: "$"},
+	}
+	for _, format := range []string{"json", "yaml"} {
+		for name, selector := range selectors {
+			t.Run(format+"/"+name, func(t *testing.T) {
+				result := applyIntegration(t, fmt.Sprintf("testdata/petstore.%s", format), testutils.OnePatch("remove", selector, map[string]any{"openapi": nil}))
+				if _, exists := result["openapi"]; exists {
+					t.Fatal("expected openapi to be removed")
+				}
+				if _, exists := result["info"]; !exists {
+					t.Fatal("expected info to be preserved")
 				}
 			})
 		}

@@ -511,24 +511,6 @@ func TestApply_Remove_TargetedNode_DeletesNode_YAML(t *testing.T) {
 	}
 }
 
-func TestApply_Remove_EmptyData_StillRemovesTargetedNode_JSON(t *testing.T) {
-	// The openapi overlay processor does NOT use PatchDecomposer — patches are
-	// applied directly. A remove selector always targets and deletes the matched
-	// node regardless of what Data contains (Data is ignored for remove).
-	result := applyJSON(t, newJSONProcessor(t), model.OverlayDefinition{
-		Overlay: model.Overlay{Patches: []model.Patch{
-			{
-				Action:   "remove",
-				Selector: &model.Selector{JSONPath: "$.externalDocs"},
-				Data:     map[string]any{},
-			},
-		}},
-	})
-	if _, exists := result["externalDocs"]; exists {
-		t.Error("externalDocs should have been removed even when Data is empty")
-	}
-}
-
 func TestApply_Remove_NilData_RemovesTargetedNode_JSON(t *testing.T) {
 	result := applyJSON(t, newJSONProcessor(t), model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
