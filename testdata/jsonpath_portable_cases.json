@@ -1,0 +1,209 @@
+[
+	{
+		"name": "root merge",
+		"source": { "name": "base" },
+		"patch": {
+			"action": "merge",
+			"selector": { "jsonPath": "$" },
+			"data": { "enabled": true }
+		},
+		"expected": { "name": "base", "enabled": true },
+		"warnings": 0
+	},
+	{
+		"name": "dot child update",
+		"source": { "info": { "title": "before", "version": "1" } },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$.info.title" },
+			"data": "after"
+		},
+		"expected": { "info": { "title": "after", "version": "1" } },
+		"warnings": 0
+	},
+	{
+		"name": "single quoted member update",
+		"source": { "metadata.with.dot": { "slash/key": 1 } },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$['metadata.with.dot']['slash/key']" },
+			"data": 2
+		},
+		"expected": { "metadata.with.dot": { "slash/key": 2 } },
+		"warnings": 0
+	},
+	{
+		"name": "double quoted member update",
+		"source": { "metadata.with.dot": { "slash/key": 1 } },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$[\"metadata.with.dot\"][\"slash/key\"]" },
+			"data": 2
+		},
+		"expected": { "metadata.with.dot": { "slash/key": 2 } },
+		"warnings": 0
+	},
+	{
+		"name": "non-negative array index update",
+		"source": { "items": ["zero", "one", "two"] },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$.items[1]" },
+			"data": "updated"
+		},
+		"expected": { "items": ["zero", "updated", "two"] },
+		"warnings": 0
+	},
+	{
+		"name": "object wildcard merge",
+		"source": {
+			"targets": { "left": { "value": 1 }, "right": { "value": 2 } }
+		},
+		"patch": {
+			"action": "merge",
+			"selector": { "jsonPath": "$.targets.*" },
+			"data": { "portable": true }
+		},
+		"expected": {
+			"targets": {
+				"left": { "value": 1, "portable": true },
+				"right": { "value": 2, "portable": true }
+			}
+		},
+		"warnings": 0
+	},
+	{
+		"name": "array wildcard merge",
+		"source": { "items": [{ "value": 1 }, { "value": 2 }] },
+		"patch": {
+			"action": "merge",
+			"selector": { "jsonPath": "$.items[*]" },
+			"data": { "portable": true }
+		},
+		"expected": {
+			"items": [
+				{ "value": 1, "portable": true },
+				{ "value": 2, "portable": true }
+			]
+		},
+		"warnings": 0
+	},
+	{
+		"name": "member selector list merge",
+		"source": {
+			"left": { "value": 1 },
+			"middle": { "value": 2 },
+			"right": { "value": 3 }
+		},
+		"patch": {
+			"action": "merge",
+			"selector": { "jsonPath": "$['left','right']" },
+			"data": { "selected": true }
+		},
+		"expected": {
+			"left": { "value": 1, "selected": true },
+			"middle": { "value": 2 },
+			"right": { "value": 3, "selected": true }
+		},
+		"warnings": 0
+	},
+	{
+		"name": "array index selector list merge",
+		"source": { "items": [{ "value": 0 }, { "value": 1 }, { "value": 2 }] },
+		"patch": {
+			"action": "merge",
+			"selector": { "jsonPath": "$.items[0,2]" },
+			"data": { "selected": true }
+		},
+		"expected": {
+			"items": [
+				{ "value": 0, "selected": true },
+				{ "value": 1 },
+				{ "value": 2, "selected": true }
+			]
+		},
+		"warnings": 0
+	},
+	{
+		"name": "bounded array slice update",
+		"source": { "numbers": [0, 1, 2, 3, 4] },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$.numbers[1:4]" },
+			"data": 9
+		},
+		"expected": { "numbers": [0, 9, 9, 9, 4] },
+		"warnings": 0
+	},
+	{
+		"name": "omitted-start array slice update",
+		"source": { "numbers": [0, 1, 2, 3] },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$.numbers[:2]" },
+			"data": 9
+		},
+		"expected": { "numbers": [9, 9, 2, 3] },
+		"warnings": 0
+	},
+	{
+		"name": "omitted-end array slice update",
+		"source": { "numbers": [0, 1, 2, 3] },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$.numbers[2:]" },
+			"data": 9
+		},
+		"expected": { "numbers": [0, 1, 9, 9] },
+		"warnings": 0
+	},
+	{
+		"name": "positive-step array slice update",
+		"source": { "numbers": [0, 1, 2, 3, 4] },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$.numbers[0:5:2]" },
+			"data": 9
+		},
+		"expected": { "numbers": [9, 1, 9, 3, 9] },
+		"warnings": 0
+	},
+	{
+		"name": "selector list removes the originally selected array elements",
+		"source": { "numbers": [0, 1, 2, 3, 4], "untouched": true },
+		"patch": {
+			"action": "remove",
+			"selector": { "jsonPath": "$.numbers[0,2,4]" }
+		},
+		"expected": { "numbers": [1, 3], "untouched": true },
+		"warnings": 0
+	},
+	{
+		"name": "slice removes the originally selected array elements",
+		"source": { "numbers": [0, 1, 2, 3, 4] },
+		"patch": {
+			"action": "remove",
+			"selector": { "jsonPath": "$.numbers[0:5:2]" }
+		},
+		"expected": { "numbers": [1, 3] },
+		"warnings": 0
+	},
+	{
+		"name": "wildcard removes every array element",
+		"source": { "numbers": [0, 1, 2, 3, 4] },
+		"patch": { "action": "remove", "selector": { "jsonPath": "$.numbers[*]" } },
+		"expected": { "numbers": [] },
+		"warnings": 0
+	},
+	{
+		"name": "zero matches warn without changing the document",
+		"source": { "present": true },
+		"patch": {
+			"action": "update",
+			"selector": { "jsonPath": "$.missing" },
+			"data": false
+		},
+		"expected": { "present": true },
+		"warnings": 1
+	}
+]

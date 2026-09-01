@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -19,6 +20,45 @@ func IsRoot(expression jp.Expr) bool {
 
 func Root() jp.Expr {
 	return jp.Expr{jp.Root('$')}
+}
+
+// RemoveAll removes every location selected against the original document.
+// Descendants are removed before ancestors, and array siblings are removed
+// from the highest index down so earlier removals do not shift later targets.
+func RemoveAll(document any, expression jp.Expr) error {
+	locations := expression.Locate(document, 0)
+	sort.SliceStable(locations, func(i, j int) bool {
+		left := locations[i]
+		right := locations[j]
+		if len(left) != len(right) {
+			return len(left) > len(right)
+		}
+
+		if 0 < len(left) && left[:len(left)-1].String() == right[:len(right)-1].String() {
+			leftIndex, leftIsIndex := left[len(left)-1].(jp.Nth)
+			rightIndex, rightIsIndex := right[len(right)-1].(jp.Nth)
+			if leftIsIndex && rightIsIndex {
+				return leftIndex > rightIndex
+			}
+		}
+
+		return left.String() > right.String()
+	})
+
+	removed := make(map[string]struct{}, len(locations))
+	for _, location := range locations {
+		key := location.String()
+		if _, exists := removed[key]; exists {
+			continue
+		}
+		removed[key] = struct{}{}
+
+		if _, err := location.Remove(document); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func Frag(value string) jp.Frag {
