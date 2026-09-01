@@ -33,8 +33,15 @@ func (self *OverlayProcessor) Apply(od model.OverlayDefinition) (model.ResourceD
 	content, err := utils.SafeCast[map[string]any](clone.Clone(self.content)), error(nil)
 
 	for _, patch := range od.Overlay.Patches {
-		if content, err = self.apply(patch, content); err != nil {
+		decomposed, err := self.decompose(content, patch)
+		if err != nil {
 			return model.ResourceDefinition{}, err
+		}
+
+		for _, dpatch := range decomposed {
+			if content, err = self.apply(dpatch, content); err != nil {
+				return model.ResourceDefinition{}, err
+			}
 		}
 	}
 
