@@ -369,10 +369,9 @@ func TestApply_Remove_NilData_RemovesTargetedNode(t *testing.T) {
 	}
 }
 
-func TestApply_RootSelector_Remove_ClearsDocument(t *testing.T) {
-	// remove with root selector and nil data clears the entire document.
+func TestApply_RootSelector_Remove_ReturnsError(t *testing.T) {
 	p := newProcessor(t, mcpContent)
-	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
+	_, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "remove",
@@ -381,8 +380,8 @@ func TestApply_RootSelector_Remove_ClearsDocument(t *testing.T) {
 			},
 		}},
 	})
-	if len(result) != 0 {
-		t.Errorf("expected empty document after root remove, got %d keys", len(result))
+	if err == nil {
+		t.Fatal("expected root remove to return an error")
 	}
 }
 

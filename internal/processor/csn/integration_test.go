@@ -194,18 +194,22 @@ func TestIntegration_Update_EntityTypeWithProperty_EnrichsCityElement(t *testing
 
 // ---- remove: root selector --------------------------------------------------
 
-// TestIntegration_Remove_Root_ClearsEntireDocument removes the root node,
-// producing an empty document.
-func TestIntegration_Remove_Root_ClearsEntireDocument(t *testing.T) {
-	testutils.AssertDeepEquals(
-		t,
-		loadExpected("remove_root_expected.json"),
-		applyIntegration(t, testutils.OnePatch(
-			"remove",
-			model.Selector{Root: utils.Ptr(true)},
-			nil,
-		)),
-	)
+func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
+	selectors := map[string]model.Selector{
+		"root selector": {Root: utils.Ptr(true)},
+		"root JSONPath": {JSONPath: "$"},
+	}
+	for name, selector := range selectors {
+		t.Run(name, func(t *testing.T) {
+			p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{
+				Content: integrationInput, MediaType: "application/json",
+			}))
+			_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
+			if err == nil {
+				t.Fatal("expected root remove to return an error")
+			}
+		})
+	}
 }
 
 // ---- remove: JSONPath selector ----------------------------------------------

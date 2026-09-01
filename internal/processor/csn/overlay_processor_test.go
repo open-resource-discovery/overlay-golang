@@ -397,17 +397,11 @@ func TestApply_Remove_WithNilDataKey_DeletesLeafViaDecomposer(t *testing.T) {
 	}
 }
 
-func TestApply_RootSelector_Remove_ClearsDocument(t *testing.T) {
-	// nil Data is now fast-pathed by Decompose. apply resolves the root selector
-	// and the remove root branch returns an empty map.
+func TestApply_RootSelector_Remove_ReturnsError(t *testing.T) {
 	p := mustNewProcessor(t, `{"definitions":{}}`)
-	rd, err := p.Apply(testutils.OnePatch("remove", model.Selector{Root: utils.Ptr(true)}, nil))
-	if err != nil {
-		t.Fatalf("Apply: %v", err)
-	}
-	result := testutils.UnmarshalResult[map[string]any](t, rd.MediaType, rd.Content)
-	if len(result) != 0 {
-		t.Errorf("expected empty document after root remove, got: %v", result)
+	_, err := p.Apply(testutils.OnePatch("remove", model.Selector{Root: utils.Ptr(true)}, nil))
+	if err == nil {
+		t.Fatal("expected root remove to return an error")
 	}
 }
 

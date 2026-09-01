@@ -70,7 +70,7 @@ func (self *OverlayProcessor) apply(patch model.Patch, content map[string]any) (
 
 func (self *OverlayProcessor) remove(content map[string]any, expression jp.Expr) (map[string]any, error) {
 	if jputils.IsRoot(expression) {
-		return make(map[string]any), nil
+		return nil, errors.Errorf("removing the document root is not supported")
 	}
 
 	for _, location := range expression.Locate(content, 0) {
