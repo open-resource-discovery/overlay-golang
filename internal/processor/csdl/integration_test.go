@@ -84,8 +84,26 @@ func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
 				Content: integrationInput, MediaType: "application/json",
 			}))
 			_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
-			if err == nil {
-				t.Fatal("expected root remove to return an error")
+			if err == nil || err.Error() != "removing the document root is not supported" {
+				t.Fatalf("expected root-removal error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestIntegration_Remove_RootMask_RemovesOnlySelectedFields(t *testing.T) {
+	selectors := map[string]model.Selector{
+		"root selector": {Root: utils.Ptr(true)},
+		"root JSONPath": {JSONPath: "$"},
+	}
+	for name, selector := range selectors {
+		t.Run(name, func(t *testing.T) {
+			result := applyIntegration(t, testutils.OnePatch("remove", selector, map[string]any{"$Version": nil}))
+			if _, exists := result["$Version"]; exists {
+				t.Fatal("expected $Version to be removed")
+			}
+			if _, exists := result["$EntityContainer"]; !exists {
+				t.Fatal("expected $EntityContainer to be preserved")
 			}
 		})
 	}
