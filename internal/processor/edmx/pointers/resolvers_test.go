@@ -30,8 +30,8 @@ func TestParseQualifiedName_SimpleNameNoParameters(t *testing.T) {
 	if name != "MyType" {
 		t.Errorf("name: got %q, want %q", name, "MyType")
 	}
-	if len(params) != 0 {
-		t.Errorf("parameters: got %v, want []", params)
+	if params != nil {
+		t.Errorf("parameters: got %v, want nil", params)
 	}
 }
 
@@ -57,8 +57,8 @@ func TestParseQualifiedName_ParametersWithSpaces(t *testing.T) {
 
 func TestParseQualifiedName_EmptyParameters(t *testing.T) {
 	_, _, params := resolvers.ParseQualifiedName("NS.Func()")
-	if len(params) != 0 {
-		t.Errorf("parameters: got %v, want []", params)
+	if params == nil || len(params) != 0 {
+		t.Errorf("parameters: got %v, want non-nil empty slice", params)
 	}
 }
 
@@ -70,8 +70,8 @@ func TestParseQualifiedName_SingleSegmentName(t *testing.T) {
 	if name != "Root" {
 		t.Errorf("name: got %q, want %q", name, "Root")
 	}
-	if len(params) != 0 {
-		t.Errorf("parameters: got %v, want []", params)
+	if params != nil {
+		t.Errorf("parameters: got %v, want nil", params)
 	}
 }
 
@@ -255,7 +255,7 @@ func TestResolveNamespace_ActionParameter(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionParameter("My.Service", "CreateBook", []string{}, "input")
+	expr := expressions.ActionParameter("My.Service", "CreateBook", nil, "input")
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -274,7 +274,7 @@ func TestResolveNamespace_ActionReturnType(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionReturnType("My.Service", "CreateBook", []string{})
+	expr := expressions.ActionReturnType("My.Service", "CreateBook", nil)
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -294,7 +294,7 @@ func TestResolveNamespace_FunctionParameter(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionParameter("My.Service", "GetBook", []string{}, "id")
+	expr := expressions.FunctionParameter("My.Service", "GetBook", nil, "id")
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -313,7 +313,7 @@ func TestResolveNamespace_FunctionReturnType(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionReturnType("My.Service", "GetBook", []string{})
+	expr := expressions.FunctionReturnType("My.Service", "GetBook", nil)
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -498,7 +498,7 @@ func TestResolveAnnotationsTarget_Action(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.Action("My.Service", "CreateBook", []string{})
+	expr := expressions.Action("My.Service", "CreateBook", nil)
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -516,7 +516,7 @@ func TestResolveAnnotationsTarget_ActionNoParameters(t *testing.T) {
     <Action Name="Ping"/>
   </Schema>`)
 
-	expr := expressions.Action("My.Service", "Ping", []string{})
+	expr := expressions.Action("My.Service", "Ping", nil)
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -536,7 +536,7 @@ func TestResolveAnnotationsTarget_Function(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.Function("My.Service", "GetBook", []string{})
+	expr := expressions.Function("My.Service", "GetBook", nil)
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -556,7 +556,7 @@ func TestResolveAnnotationsTarget_ActionParameter(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionParameter("My.Service", "CreateBook", []string{}, "input")
+	expr := expressions.ActionParameter("My.Service", "CreateBook", nil, "input")
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -576,7 +576,7 @@ func TestResolveAnnotationsTarget_ActionReturnType(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionReturnType("My.Service", "CreateBook", []string{})
+	expr := expressions.ActionReturnType("My.Service", "CreateBook", nil)
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -596,7 +596,7 @@ func TestResolveAnnotationsTarget_FunctionParameter(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionParameter("My.Service", "GetBook", []string{}, "id")
+	expr := expressions.FunctionParameter("My.Service", "GetBook", nil, "id")
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
@@ -616,7 +616,7 @@ func TestResolveAnnotationsTarget_FunctionReturnType(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionReturnType("My.Service", "GetBook", []string{})
+	expr := expressions.FunctionReturnType("My.Service", "GetBook", nil)
 	pexpr, found, err := xml2json.Pinpoint(doc, expr)
 	if !found || err != nil {
 		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)

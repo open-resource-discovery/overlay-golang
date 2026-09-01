@@ -25,6 +25,10 @@ var resolvers = (func() *struct {
 		opening := strings.Index(value, "(")
 		closing := strings.Index(value, ")")
 
+		if opening < 0 || closing < opening {
+			return nil
+		}
+
 		if closing <= opening+1 {
 			return []string{}
 		}

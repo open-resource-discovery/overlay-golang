@@ -27,8 +27,8 @@ func ForOperation(document xml2json.Document, selector *model.Selector) (*Pointe
 		{"Function", expressions.Function(namespace, name, parameters)},
 		{"EntityContainer.FunctionImport", expressions.FunctionImport(namespace, name)},
 	} {
-		if len(parameters) > 0 && "EntityContainer.FunctionImport" == candidate[0] {
-			continue // If parameters are present - FunctionImport is not a valid candidate
+		if parameters != nil && "EntityContainer.FunctionImport" == candidate[0] {
+			continue // A signature-qualified selector cannot target a FunctionImport.
 		}
 
 		if pexpression, found, err := xml2json.Pinpoint(document, utils.SafeCast[jp.Expr](candidate[1])); found && err != nil {

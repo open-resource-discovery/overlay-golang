@@ -41,36 +41,45 @@ var expressions = (func() *struct {
 			),
 		)
 	}
-	_Action := func(namespace string, name string, parameters []string) jp.Expr {
-		return jputils.Expr(
-			_Schema(namespace),
-			"nodes",
-			jputils.And(
-				jputils.Eq("@.name", "Action"),
-				jputils.Eq("@.attributes.Name", name),
+	_Operation := func(kind string, name string, parameters []string) *jp.Equation {
+		conditions := []*jp.Equation{
+			jputils.Eq("@.name", kind),
+			jputils.Eq("@.attributes.Name", name),
+		}
+
+		if parameters != nil {
+			conditions = append(
+				conditions,
 				utils.Map(
 					parameters,
 					func(idx int, parameter string) *jp.Equation {
 						return jputils.Eq(fmt.Sprintf("@.nodes.[%d].attributes.Type", idx), parameter)
 					},
 				)...,
-			),
+			)
+			conditions = append(
+				conditions,
+				jp.Eq(
+					jp.Count(jputils.Expr("@", "nodes", jputils.Eq("@.name", "Parameter"))),
+					jp.ConstInt(int64(len(parameters))),
+				),
+			)
+		}
+
+		return jputils.And(conditions[0], conditions[1], conditions[2:]...)
+	}
+	_Action := func(namespace string, name string, parameters []string) jp.Expr {
+		return jputils.Expr(
+			_Schema(namespace),
+			"nodes",
+			_Operation("Action", name, parameters),
 		)
 	}
 	_Function := func(namespace string, name string, parameters []string) jp.Expr {
 		return jputils.Expr(
 			_Schema(namespace),
 			"nodes",
-			jputils.And(
-				jputils.Eq("@.name", "Function"),
-				jputils.Eq("@.attributes.Name", name),
-				utils.Map(
-					parameters,
-					func(idx int, parameter string) *jp.Equation {
-						return jputils.Eq(fmt.Sprintf("@.nodes.[%d].attributes.Type", idx), parameter)
-					},
-				)...,
-			),
+			_Operation("Function", name, parameters),
 		)
 	}
 

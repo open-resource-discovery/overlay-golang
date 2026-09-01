@@ -99,7 +99,7 @@ func TestExpressions_EnumType_WithMember(t *testing.T) {
 // ---- Action -----------------------------------------------------------------
 
 func TestExpressions_Action_WithoutParameters(t *testing.T) {
-	expr := expressions.Action("CatalogService", "submitOrder", []string{})
+	expr := expressions.Action("CatalogService", "submitOrder", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder')]`)
 }
@@ -107,7 +107,7 @@ func TestExpressions_Action_WithoutParameters(t *testing.T) {
 // ---- Function ---------------------------------------------------------------
 
 func TestExpressions_Function_WithoutParameters(t *testing.T) {
-	expr := expressions.Function("CatalogService", "getBooks", []string{})
+	expr := expressions.Function("CatalogService", "getBooks", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBooks')]`)
 
@@ -168,7 +168,7 @@ func TestExpressions_FunctionImport_getBookById(t *testing.T) {
 // ---- ActionParameter --------------------------------------------------------
 
 func TestExpressions_ActionParameter_WithoutParameters(t *testing.T) {
-	expr := expressions.ActionParameter("CatalogService", "submitOrder", []string{}, "orderId")
+	expr := expressions.ActionParameter("CatalogService", "submitOrder", nil, "orderId")
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder')].nodes[?(@.name == 'Parameter' && @.attributes.Name == 'orderId')]`)
 }
@@ -176,7 +176,7 @@ func TestExpressions_ActionParameter_WithoutParameters(t *testing.T) {
 // ---- ActionReturnType -------------------------------------------------------
 
 func TestExpressions_ActionReturnType_WithoutParameters(t *testing.T) {
-	expr := expressions.ActionReturnType("CatalogService", "submitOrder", []string{})
+	expr := expressions.ActionReturnType("CatalogService", "submitOrder", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder')].nodes[?(@.name == 'ReturnType')]`)
 }
@@ -184,7 +184,7 @@ func TestExpressions_ActionReturnType_WithoutParameters(t *testing.T) {
 // ---- FunctionParameter ------------------------------------------------------
 
 func TestExpressions_FunctionParameter_WithoutParameters(t *testing.T) {
-	expr := expressions.FunctionParameter("CatalogService", "getBookPriorityById", []string{}, "id")
+	expr := expressions.FunctionParameter("CatalogService", "getBookPriorityById", nil, "id")
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBookPriorityById')].nodes[?(@.name == 'Parameter' && @.attributes.Name == 'id')]`)
 
@@ -197,7 +197,7 @@ func TestExpressions_FunctionParameter_WithoutParameters(t *testing.T) {
 // ---- FunctionReturnType -----------------------------------------------------
 
 func TestExpressions_FunctionReturnType_getBooks(t *testing.T) {
-	expr := expressions.FunctionReturnType("CatalogService", "getBooks", []string{})
+	expr := expressions.FunctionReturnType("CatalogService", "getBooks", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBooks')].nodes[?(@.name == 'ReturnType')]`)
 
@@ -208,7 +208,7 @@ func TestExpressions_FunctionReturnType_getBooks(t *testing.T) {
 }
 
 func TestExpressions_FunctionReturnType_getBookPriorityById(t *testing.T) {
-	expr := expressions.FunctionReturnType("CatalogService", "getBookPriorityById", []string{})
+	expr := expressions.FunctionReturnType("CatalogService", "getBookPriorityById", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBookPriorityById')].nodes[?(@.name == 'ReturnType')]`)
 
