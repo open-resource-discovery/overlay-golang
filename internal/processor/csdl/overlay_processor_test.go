@@ -443,6 +443,51 @@ func TestApply_Update_EnumTypeMember_LeavesOtherMembersUntouched(t *testing.T) {
 	}
 }
 
+func TestApply_Remove_EnumTypeMember_RemovesMemberAndItsAnnotations(t *testing.T) {
+	base := "{\"ODataDemo\":{\"FileAccess\":{\"$Kind\":\"EnumType\",\"Read\":1,\"Read@Core.Description\":\"read\",\"Write\":2,\"Write@Core.Description\":\"write\"}}}"
+	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
+		model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
+		nil,
+	))
+	fileAccess := testutils.Get(t, result, "ODataDemo", "FileAccess").(map[string]any)
+	if _, ok := fileAccess["Read"]; ok {
+		t.Error("expected Read member removed")
+	}
+	if _, ok := fileAccess["Read@Core.Description"]; ok {
+		t.Error("expected Read annotation removed")
+	}
+	if _, ok := fileAccess["Write"]; !ok || fileAccess["Write@Core.Description"] != "write" {
+		t.Errorf("expected sibling member preserved, got %v", fileAccess)
+	}
+}
+
+func TestApply_Update_EnumTypeAndMember_SimultaneouslyAnnotatesBoth(t *testing.T) {
+	// A single update patch whose selector targets an enum type and whose data
+	// contains both a top-level annotation (applied to the type) and a nested
+	// map keyed by a member name (decomposed into a member-level update).
+	base := `{"ODataDemo":{"FileAccess":{"$Kind":"EnumType","Read":1,"Read@Core.Description":"old read","Write":2,"Write@Core.Description":"old write"}}}`
+	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
+		model.Selector{EnumType: "ODataDemo.FileAccess"},
+		map[string]any{
+			"@Core.Description": "updated enum description",
+			"Read":              map[string]any{"@Core.Description": "updated read description"},
+		},
+	))
+	fa := testutils.Get(t, result, "ODataDemo", "FileAccess").(map[string]any)
+	if fa["@Core.Description"] != "updated enum description" {
+		t.Errorf("@Core.Description on enum type: got %v, want %q", fa["@Core.Description"], "updated enum description")
+	}
+	if fa["Read@Core.Description"] != "updated read description" {
+		t.Errorf("Read@Core.Description: got %v, want %q", fa["Read@Core.Description"], "updated read description")
+	}
+	// sibling member annotation must survive
+	if fa["Write@Core.Description"] != "old write" {
+		t.Errorf("Write@Core.Description must be preserved: got %v", fa["Write@Core.Description"])
+	}
+}
+
 func TestApply_Update_Root_ReplacesDocument(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: `{"old":"value"}`, MediaType: "application/json"}))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
