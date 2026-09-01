@@ -58,6 +58,8 @@ if err != nil {
 ```
 
 `Apply` returns one `model.ResourceDefinition` per overlay whose `Target` matched the definition. Each result's `Content` field holds the patched document as a string.
+It attempts every patch and applicable overlay, applies each patch atomically, and returns successfully produced partial results together with one aggregate error when any patch fails.
+Pass an optional `model.DiagnosticHandler` to receive structured warnings and errors with overlay and patch locations.
 
 #### Checking applicability without applying
 
@@ -155,13 +157,14 @@ type Patch struct {
 
 | Action | Behaviour |
 |---|---|
-| `merge` | Deep-merges `Data` into the selected node. Map keys are merged recursively; arrays are appended. Creates the node if it does not exist. |
+| `merge` | Deep-merges `Data` into selected nodes. Map keys are merged recursively; arrays are appended. |
 | `update` | Fully replaces the selected node with `Data`. |
-| `remove` | Deletes the selected node. When `Data` is a `map[string]any` with `nil` values, only those specific keys are deleted from the node rather than the node itself. |
+| `remove` | Deletes the selected node. When `Data` is a `map[string]any` with `nil` values, only those specific keys are deleted from the node rather than the node itself. An unmatched selector is a successful no-op. |
 
 #### `Selector`
 
-Exactly one field should be set per patch. Concept-level selectors are preferred over `JSONPath` — they are resilient to format changes and document restructuring.
+Exactly one field should be set per patch.
+Concept-level selectors are preferred over `JSONPath` because they are resilient to format changes and document restructuring.
 
 | Field | Targets |
 |---|---|
@@ -178,6 +181,36 @@ Exactly one field should be set per patch. Concept-level selectors are preferred
 | `Operation` + `ReturnType *bool` | The return type of the identified operation |
 
 > **Note:** `Root` and `JSONPath` selectors are not supported for the `edmx` processor. Use concept-level selectors (EntityType, Operation, etc.) instead.
+
+#### Limitations and behavior notes
+
+These reflect what the ORD Overlay spec currently defines and how this library implements it.
+They are documented here so callers do not rely on unspecified behavior.
+
+- **No-match / create-on-missing.** No selector creates a missing target.
+  A concept-level `merge` or `update` whose selector matches nothing returns an error.
+  A zero-match `JSONPath` patch is a successful no-op and produces a warning, regardless of action, because JSONPath selectors naturally match zero or more elements.
+  An unmatched `remove` is also a successful no-op and produces a warning because the requested absence already holds.
+  Do not rely on create-on-missing; a future version may reintroduce it behind a dedicated create action.
+- **Portable JSONPath profile.** JSONPath follows RFC 9535.
+  Every toolkit supports root, dot and quoted-bracket member selectors, non-negative array indices, object and array wildcards, homogeneous member or index selector lists, and forward array slices with omitted or non-negative bounds.
+  Portable overlays use only this subset.
+  Toolkits may accept additional non-portable extensions, but unsupported expressions are errors rather than zero matches.
+- **Error aggregation.** Every patch is attempted, failed patches do not retain partial mutations, and later patches and overlays continue.
+  `Apply` returns successfully produced partial results and one aggregate error when any error occurred.
+  Consumers choose how to display diagnostics and whether warnings should affect their own process exit status.
+- **The document root cannot be removed.** An omitted-data `remove` using `root` or `JSONPath: "$"` returns an error.
+  Use `update` when the complete document must be replaced.
+- **EDMX targets are annotation-only.** For the `edmx` (OData XML) processor, overlays add, replace, and remove annotations on existing structure.
+  They cannot create new structural elements (EntityType, EntitySet, Property, Function/Action, EnumType, ComplexType); those must already exist in the source schema.
+  A `remove` patch with omitted `Data` preserves the selected structural element and removes its complete annotation set.
+  Combined with the note above (no `Root`/`JSONPath` for `edmx`), there is no structural-authoring path.
+  New structure belongs in the source CSDL/CDS, not in an overlay.
+  Applying overlays to OData v2 EDMX is unsupported and returns an error.
+  Use an OData v4 EDMX document that describes the model of the OData v2 API as the overlay target.
+- **CSDL JSON enum members** are scalars, so member annotations are written as sibling keys on the enum type (`Read@Core.Description`), not merged into the member value.
+
+These behaviors are specified by the [ORD Overlay specification clarification](https://github.com/open-resource-discovery/specification/pull/171).
 
 ### Running the tests
 
