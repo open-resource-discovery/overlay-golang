@@ -155,7 +155,7 @@ type Patch struct {
 
 | Action | Behaviour |
 |---|---|
-| `merge` | Deep-merges `Data` into the selected node. Map keys are merged recursively; arrays are appended. Errors if the selector matches no existing node (overlays never create a missing target). |
+| `merge` | Deep-merges `Data` into the selected node. Map keys are merged recursively; arrays are appended. Creates the node if it does not exist. |
 | `update` | Fully replaces the selected node with `Data`. |
 | `remove` | Deletes the selected node. When `Data` is a `map[string]any` with `nil` values, only those specific keys are deleted from the node rather than the node itself. |
 
