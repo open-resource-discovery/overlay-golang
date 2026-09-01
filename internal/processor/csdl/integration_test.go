@@ -455,6 +455,85 @@ func TestIntegration_Update_Operation_ReplacesProductsByRating(t *testing.T) {
 	)
 }
 
+// ---- update: EnumType selector ----------------------------------------------
+
+// TestIntegration_Update_EnumType_AddsAnnotation applies an update patch to the
+// FileAccess enum type that adds a @Core.Description annotation, verifying that all
+// member values (Read, Write, Create, Delete) and structural fields are preserved.
+func TestIntegration_Update_EnumType_AddsAnnotation(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		loadExpected("update_enumtype_expected.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"update",
+			model.Selector{EnumType: "ODataDemo.FileAccess"},
+			map[string]any{
+				"$Kind":             "EnumType",
+				"$UnderlyingType":   "Edm.Int32",
+				"$IsFlags":          true,
+				"Read":              float64(1),
+				"Write":             float64(2),
+				"@Core.Description": "Bitmask for file access permissions.",
+			},
+		)),
+	)
+}
+
+// ---- update: EnumType member selector ---------------------------------------
+
+// TestIntegration_Update_EnumTypeMember_AddsDescriptionToReadMember applies an update
+// patch to the Read member of FileAccess, verifying that the annotation is stored as
+// "Read@Core.Description" on the enum type and that sibling members are untouched.
+func TestIntegration_Update_EnumTypeMember_AddsDescriptionToReadMember(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		loadExpected("update_enumtype_member_expected.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"update",
+			model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
+			map[string]any{"@Core.Description": "Grants read-only permission."},
+		)),
+	)
+}
+
+// ---- remove: EnumType member selector ---------------------------------------
+
+// TestIntegration_Remove_EnumTypeMember_DeletesWriteMember removes the Write member
+// from FileAccess entirely, verifying that its value key is absent and that the
+// remaining members (Read, Create, Delete) are unaffected.
+func TestIntegration_Remove_EnumTypeMember_DeletesWriteMember(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		loadExpected("remove_enumtype_member_expected.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Write"},
+			nil,
+		)),
+	)
+}
+
+// ---- update: EnumType + member simultaneously --------------------------------
+
+// TestIntegration_Update_EnumTypeAndMember_AnnotatesBothAtOnce applies a single update
+// patch whose selector targets the FileAccess enum type and whose data contains both a
+// top-level annotation (applied to the type) and a nested member map (decomposed into a
+// member-level annotation), verifying that both are written atomically.
+func TestIntegration_Update_EnumTypeAndMember_AnnotatesBothAtOnce(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		loadExpected("update_enumtype_and_member_expected.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"update",
+			model.Selector{EnumType: "ODataDemo.FileAccess"},
+			map[string]any{
+				"@Core.Description": "File access permission flags.",
+				"Read":              map[string]any{"@Core.Description": "Grants read-only permission."},
+			},
+		)),
+	)
+}
+
 // ---- multi-patch: realistic overlay sequence --------------------------------
 
 // TestIntegration_MultiPatch_RealisticOverlaySequence applies a sequence of four
