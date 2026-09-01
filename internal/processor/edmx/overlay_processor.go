@@ -1,6 +1,8 @@
 package edmx
 
 import (
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/huandu/go-clone"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/jputils"
@@ -37,6 +39,9 @@ func (self *OverlayProcessor) Apply(definition model.OverlayDefinition) (model.R
 		for _, decomposed := range self.Decompose(patch) {
 			pointer, err := NewPointer(document, decomposed.Selector)
 			if err != nil {
+				if patch.Action == "remove" && strings.HasPrefix(err.Error(), "no such element:") {
+					continue
+				}
 				return model.ResourceDefinition{}, err
 			}
 

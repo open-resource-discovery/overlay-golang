@@ -374,7 +374,7 @@ func TestCreateFor_ReturnedProcessor_ImplementsOverlayProcessorInterface(t *test
 	}
 }
 
-func TestApply_Remove_UnmatchedSelector_ReturnsError(t *testing.T) {
+func TestApply_Remove_UnmatchedSelector_IsNoOp(t *testing.T) {
 	cases := []struct {
 		name       string
 		definition model.ResourceDefinition
@@ -396,12 +396,24 @@ func TestApply_Remove_UnmatchedSelector_ReturnsError(t *testing.T) {
 				t.Fatalf("CreateFor: %v", err)
 			}
 
-			_, err = p.Apply(model.OverlayDefinition{Overlay: model.Overlay{Patches: []model.Patch{{
+			result, err := p.Apply(model.OverlayDefinition{Overlay: model.Overlay{Patches: []model.Patch{{
 				Action:   "remove",
 				Selector: tc.selector,
 			}}}})
-			if err == nil {
-				t.Fatal("expected unmatched remove to return an error")
+			if err != nil {
+				t.Fatalf("Apply: %v", err)
+			}
+
+			want, err := marshaller.Unmarshal(tc.definition.MediaType, tc.definition.Content)
+			if err != nil {
+				t.Fatalf("unmarshal input: %v", err)
+			}
+			got, err := marshaller.Unmarshal(tc.definition.MediaType, result.Content)
+			if err != nil {
+				t.Fatalf("unmarshal result: %v", err)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("unmatched remove changed the document: got %#v, want %#v", got, want)
 			}
 		})
 	}
