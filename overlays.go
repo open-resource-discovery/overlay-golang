@@ -1,7 +1,7 @@
 package overlays
 
 import (
-	"github.com/go-errors/errors"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/processor"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
@@ -30,28 +30,26 @@ func IsApplicable(definition model.ResourceDefinition, overlay model.OverlayDefi
 	return true
 }
 
-func Apply(definition model.ResourceDefinition, overlays []model.OverlayDefinition) (results []model.ResourceDefinition, err error) {
+func Apply(definition model.ResourceDefinition, overlays []model.OverlayDefinition) (results []model.ResourceDefinition, err *errors.OverlayError) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.WrapPrefix(r, "unexpected error occurred", 0)
+			err = errors.Wrap(errors.WrapPrefix(r, "unexpected error occurred"), errors.Severity_Fatal)
 		}
 	}()
 
-	if proc, err := processor.CreateFor(definition); err != nil {
-		return nil, errors.WrapPrefix(err, "failed to process resource definition", 0)
-	} else {
-		for _, overlay := range overlays {
-			if !IsApplicable(definition, overlay) {
-				continue
-			}
+	var aggregated *errors.OverlayError
+	var proc = processor.MustCreateFor(definition)
 
-			if result, err := proc.Apply(overlay); err != nil {
-				return nil, errors.WrapPrefix(err, "failed to apply overlay", 0)
-			} else {
-				results = append(results, result)
-			}
+	for _, overlay := range overlays {
+		if !IsApplicable(definition, overlay) {
+			continue
 		}
+
+		result, err := proc.Apply(overlay)
+
+		results = append(results, result)
+		aggregated = errors.Append(aggregated, err)
 	}
 
-	return results, nil
+	return results, aggregated
 }

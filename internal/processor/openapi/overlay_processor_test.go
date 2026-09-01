@@ -24,14 +24,10 @@ func newJSONProcessor(t *testing.T) *OverlayProcessor {
 	if err != nil {
 		t.Fatalf("marshal JSON fixture: %v", err)
 	}
-	p, err := NewOverlayProcessor(model.ResourceDefinition{
+	return NewOverlayProcessor(model.ResourceDefinition{
 		Content:   raw,
 		MediaType: "application/json",
 	})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor(JSON): %v", err)
-	}
-	return p
 }
 
 // newYAMLProcessor creates an OverlayProcessor from the petstore YAML fixture.
@@ -41,14 +37,10 @@ func newYAMLProcessor(t *testing.T) *OverlayProcessor {
 	if err != nil {
 		t.Fatalf("marshal YAML fixture: %v", err)
 	}
-	p, err := NewOverlayProcessor(model.ResourceDefinition{
+	return NewOverlayProcessor(model.ResourceDefinition{
 		Content:   raw,
 		MediaType: "application/yaml",
 	})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor(YAML): %v", err)
-	}
-	return p
 }
 
 // applyJSON runs Apply on a JSON processor and returns the result as a map.
@@ -58,11 +50,7 @@ func applyJSON(t *testing.T, p *OverlayProcessor, od model.OverlayDefinition) ma
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
-	parsed, err := marshaller.Unmarshal("application/json", rd.Content)
-	if err != nil {
-		t.Fatalf("unmarshal result JSON: %v", err)
-	}
-	return parsed.(map[string]any)
+	return marshaller.MustUnmarshal("application/json", rd.Content).(map[string]any)
 }
 
 // applyYAML runs Apply on a YAML processor and returns the result as a map.
@@ -72,11 +60,7 @@ func applyYAML(t *testing.T, p *OverlayProcessor, od model.OverlayDefinition) ma
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
-	parsed, err := marshaller.Unmarshal("application/yaml", rd.Content)
-	if err != nil {
-		t.Fatalf("unmarshal result YAML: %v", err)
-	}
-	return parsed.(map[string]any)
+	return marshaller.MustUnmarshal("application/yaml", rd.Content).(map[string]any)
 }
 
 // operationByID returns the operation map for the given operationId by scanning
@@ -109,39 +93,39 @@ func operationByID(t *testing.T, result map[string]any, id string) map[string]an
 // ---- NewOverlayProcessor ----------------------------------------------------
 
 func TestNewOverlayProcessor_ValidJSON_Succeeds(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{
+	defer testutils.AssertDoesNotPanic(t, "unexpected error: %v")
+
+	NewOverlayProcessor(model.ResourceDefinition{
 		Content:   `{"openapi":"3.0.3","info":{"title":"T","version":"1"}}`,
 		MediaType: "application/json",
-	}); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	})
 }
 
 func TestNewOverlayProcessor_ValidYAML_Succeeds(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{
+	defer testutils.AssertDoesNotPanic(t, "unexpected error: %v")
+
+	NewOverlayProcessor(model.ResourceDefinition{
 		Content:   "openapi: \"3.0.3\"\ninfo:\n  title: T\n  version: \"1\"\n",
 		MediaType: "application/yaml",
-	}); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	})
 }
 
 func TestNewOverlayProcessor_InvalidJSON_ReturnsError(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{
+	defer testutils.AssertPanics(t, "expected error for invalid JSON")
+
+	NewOverlayProcessor(model.ResourceDefinition{
 		Content:   `{not valid json`,
 		MediaType: "application/json",
-	}); err == nil {
-		t.Fatal("expected error for invalid JSON, got nil")
-	}
+	})
 }
 
 func TestNewOverlayProcessor_InvalidYAML_ReturnsError(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{
+	defer testutils.AssertPanics(t, "expected error for invalid YAML")
+
+	NewOverlayProcessor(model.ResourceDefinition{
 		Content:   ":\n  - bad: [unclosed",
 		MediaType: "application/yaml",
-	}); err == nil {
-		t.Fatal("expected error for invalid YAML, got nil")
-	}
+	})
 }
 
 // ---- Apply: output fields ---------------------------------------------------
@@ -179,20 +163,13 @@ func TestApply_OutputFields_PurposeAndVisibilitySet_YAML(t *testing.T) {
 }
 
 func TestApply_OutputFields_OriginalDefinitionFieldsPreserved(t *testing.T) {
-	raw, err := marshaller.Marshal("application/json", petstoreDocJSON)
-	if err != nil {
-		t.Fatalf("marshal JSON fixture: %v", err)
-	}
-	p, err := NewOverlayProcessor(model.ResourceDefinition{
-		Content:    raw,
+	p := NewOverlayProcessor(model.ResourceDefinition{
+		Content:    marshaller.MustMarshal("application/json", petstoreDocJSON),
 		MediaType:  "application/json",
 		OrdID:      "sap.sm:resourceDefinition:petstore:v1",
 		URL:        "https://example.com/petstore.json",
 		Visibility: "internal",
 	})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
 	rd, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Visibility: "public", Patches: []model.Patch{}},
 	})
@@ -323,7 +300,7 @@ func TestApply_Merge_ExistingKey_Overwrites_JSON(t *testing.T) {
 }
 
 func TestApply_Merge_RootSelector_AddsKey_JSON(t *testing.T) {
-	p, _ := NewOverlayProcessor(model.ResourceDefinition{
+	p := NewOverlayProcessor(model.ResourceDefinition{
 		Content:   `{"openapi":"3.0.3","info":{"title":"T","version":"1"}}`,
 		MediaType: "application/json",
 	})
@@ -430,7 +407,7 @@ func TestApply_Update_NestedObject_ReplacesNode_JSON(t *testing.T) {
 }
 
 func TestApply_Update_Root_ReplacesEntireDocument_JSON(t *testing.T) {
-	p, _ := NewOverlayProcessor(model.ResourceDefinition{
+	p := NewOverlayProcessor(model.ResourceDefinition{
 		Content:   `{"openapi":"3.0.3","info":{"title":"T","version":"1"}}`,
 		MediaType: "application/json",
 	})

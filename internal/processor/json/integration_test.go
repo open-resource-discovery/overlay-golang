@@ -3,6 +3,7 @@
 package json
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/marshaller"
@@ -18,22 +19,16 @@ var integrationInputJSON = testutils.LoadFixture("testdata/mcp_server_card.json"
 // and returns the parsed result document.
 func applyIntegration(t *testing.T, od model.OverlayDefinition) map[string]any {
 	t.Helper()
-	p, err := NewOverlayProcessor(model.ResourceDefinition{
+	p := NewOverlayProcessor(model.ResourceDefinition{
 		Content:   integrationInputJSON,
 		MediaType: "application/json",
 	})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
 	rd, err := p.Apply(od)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
-	parsed, err := marshaller.Unmarshal("application/json", rd.Content)
-	if err != nil {
-		t.Fatalf("Unmarshal result: %v", err)
-	}
-	return parsed.(map[string]any)
+
+	return marshaller.MustUnmarshal("application/json", rd.Content).(map[string]any)
 }
 
 // loadIntegrationExpected loads and parses an expected-output JSON fixture.
@@ -91,11 +86,11 @@ func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
 	}
 	for name, selector := range selectors {
 		t.Run(name, func(t *testing.T) {
-			p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{
+			p := NewOverlayProcessor(model.ResourceDefinition{
 				Content: integrationInputJSON, MediaType: "application/json",
-			}))
+			})
 			_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
-			if err == nil || err.Error() != "removing the document root is not supported" {
+			if err == nil || !strings.Contains(err.Error(), "removing the document root is not supported") {
 				t.Fatalf("expected root-removal error, got %v", err)
 			}
 		})

@@ -5,12 +5,13 @@ package testutils
 import (
 	"testing"
 
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/marshaller"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
 
 func ApplyAndParse(t *testing.T, p interface {
-	Apply(model.OverlayDefinition) (model.ResourceDefinition, error)
+	Apply(model.OverlayDefinition) (model.ResourceDefinition, *errors.OverlayError)
 }, od model.OverlayDefinition) map[string]any {
 	t.Helper()
 	rd, err := p.Apply(od)

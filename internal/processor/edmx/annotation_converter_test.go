@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 )
 
@@ -208,11 +209,8 @@ func TestConvert_CollectionOfRecords_SingleRecord_ProducesRecordInsideCollection
 // ---- resolveTypeName: panic on unsupported type -----------------------------
 
 func TestConvert_UnsupportedScalarType_Panics(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("expected panic for unsupported value type, got none")
-		}
-	}()
+	defer testutils.AssertPanics(t, "expected panic for unsupported value type")
+
 	AnnotationConverter(0).Convert("@Core.Description", []byte("unsupported"))
 }
 

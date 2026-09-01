@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
 
@@ -29,25 +30,22 @@ func minimalXML(extraXML string) string {
 
 func newProcessor(t *testing.T, xml string) *OverlayProcessor {
 	t.Helper()
-	p, err := NewOverlayProcessor(model.ResourceDefinition{Content: xml})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
-	return p
+
+	return NewOverlayProcessor(model.ResourceDefinition{Content: xml})
 }
 
 // ─── NewOverlayProcessor ─────────────────────────────────────────────────────
 
 func TestNewOverlayProcessor_ValidXML_ReturnsProcessor(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{Content: minimalXML("")}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	defer testutils.AssertDoesNotPanic(t, "unexpected error: %v")
+
+	NewOverlayProcessor(model.ResourceDefinition{Content: minimalXML("")})
 }
 
 func TestNewOverlayProcessor_InvalidContent_ReturnsError(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{Content: "not xml"}); err == nil {
-		t.Fatal("expected error for invalid XML, got nil")
-	}
+	defer testutils.AssertPanics(t, "expected error for invalid XML")
+
+	NewOverlayProcessor(model.ResourceDefinition{Content: "not xml"})
 }
 
 // ─── Apply — result shape ─────────────────────────────────────────────────────

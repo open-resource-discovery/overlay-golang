@@ -3,6 +3,7 @@
 package csdl
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
@@ -23,7 +24,7 @@ func applyIntegration(t *testing.T, od model.OverlayDefinition) map[string]any {
 		MediaType: "application/json",
 	}
 
-	return testutils.ApplyAndParse(t, testutils.AssertNoError(NewOverlayProcessor(definition)), od)
+	return testutils.ApplyAndParse(t, NewOverlayProcessor(definition), od)
 }
 
 // loadExpected loads and parses an expected-output fixture from the integration testdata directory.
@@ -80,11 +81,11 @@ func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
 	}
 	for name, selector := range selectors {
 		t.Run(name, func(t *testing.T) {
-			p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{
+			p := NewOverlayProcessor(model.ResourceDefinition{
 				Content: integrationInput, MediaType: "application/json",
-			}))
+			})
 			_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
-			if err == nil || err.Error() != "removing the document root is not supported" {
+			if err == nil || !strings.Contains(err.Error(), "removing the document root is not supported") {
 				t.Fatalf("expected root-removal error, got %v", err)
 			}
 		})

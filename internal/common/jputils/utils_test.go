@@ -30,6 +30,127 @@ func fragType(f jp.Frag) string {
 	}
 }
 
+// ---- Parse ------------------------------------------------------------------
+
+func TestParse_RootExpression_ReturnsNoError(t *testing.T) {
+	expr, err := Parse("$")
+	if err != nil {
+		t.Fatalf("Parse(\"$\") error = %v, want nil", err)
+	}
+	if len(expr) == 0 {
+		t.Error("Parse(\"$\"): returned empty expression")
+	}
+}
+
+func TestParse_RootExpression_EqualsRoot(t *testing.T) {
+	expr, _ := Parse("$")
+	testutils.AssertExpr(t, expr, "$")
+}
+
+func TestParse_SimpleChildPath_ReturnsNoError(t *testing.T) {
+	_, err := Parse("$.info")
+	if err != nil {
+		t.Fatalf("Parse(\"$.info\") error = %v, want nil", err)
+	}
+}
+
+func TestParse_SimpleChildPath_ExpressionString(t *testing.T) {
+	expr, _ := Parse("$.info")
+	testutils.AssertExpr(t, expr, "$.info")
+}
+
+func TestParse_NestedPath_ReturnsCorrectExpression(t *testing.T) {
+	expr, err := Parse("$.info.title")
+	if err != nil {
+		t.Fatalf("Parse(\"$.info.title\") error = %v, want nil", err)
+	}
+	testutils.AssertExpr(t, expr, "$.info.title")
+}
+
+func TestParse_WildcardPath_ReturnsNoError(t *testing.T) {
+	expr, err := Parse("$.*")
+	if err != nil {
+		t.Fatalf("Parse(\"$.*\") error = %v, want nil", err)
+	}
+	if len(expr) == 0 {
+		t.Error("Parse(\"$.*\"): returned empty expression")
+	}
+}
+
+func TestParse_ArrayIndexPath_ReturnsNoError(t *testing.T) {
+	expr, err := Parse("$.items[0]")
+	if err != nil {
+		t.Fatalf("Parse(\"$.items[0]\") error = %v, want nil", err)
+	}
+	if len(expr) == 0 {
+		t.Error("Parse(\"$.items[0]\"): returned empty expression")
+	}
+}
+
+func TestParse_RecursiveDescentPath_ReturnsNoError(t *testing.T) {
+	_, err := Parse("$..name")
+	if err != nil {
+		t.Fatalf("Parse(\"$..name\") error = %v, want nil", err)
+	}
+}
+
+func TestParse_InvalidSyntax_ReturnsWarningError(t *testing.T) {
+	_, err := Parse("$$[invalid")
+	if err == nil {
+		t.Fatal("expected error for invalid JSONPath syntax, got nil")
+	}
+	if err.Severity() != 0 { // Severity_Warning == 0
+		t.Errorf("Severity() = %v, want Severity_Warning", err.Severity())
+	}
+}
+
+func TestParse_ValidExpression_ReturnsNilError(t *testing.T) {
+	cases := []string{
+		"$",
+		"$.foo",
+		"$.foo.bar",
+		"$.*",
+		"$.items[0]",
+		"$..name",
+		"$.paths['/pets']",
+	}
+	for _, input := range cases {
+		t.Run(input, func(t *testing.T) {
+			_, err := Parse(input)
+			if err != nil {
+				t.Errorf("Parse(%q) error = %v, want nil", input, err)
+			}
+		})
+	}
+}
+
+func TestParse_ReturnedExpr_NavigatesDocument(t *testing.T) {
+	doc := map[string]any{
+		"info": map[string]any{"title": "Petstore"},
+	}
+	expr, err := Parse("$.info.title")
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	result := expr.Get(doc)
+	if len(result) != 1 || result[0] != "Petstore" {
+		t.Errorf("Get = %v, want [Petstore]", result)
+	}
+}
+
+func TestParse_EmptyString_ReturnsEmptyExprNoError(t *testing.T) {
+	// jp.ParseString("") succeeds and returns an empty (zero-length) expression.
+	expr, err := Parse("")
+	if err != nil {
+		t.Fatalf("Parse(\"\") error = %v, want nil", err)
+	}
+	if len(expr) != 0 {
+		t.Errorf("Parse(\"\") len = %d, want 0", len(expr))
+	}
+}
+
+// ---- Root -------------------------------------------------------------------
+
 func TestRoot(t *testing.T) {
 	t.Run("single Root frag that evaluates to the document", func(t *testing.T) {
 		got := Root()
@@ -272,7 +393,9 @@ func TestConst(t *testing.T) {
 	})
 
 	t.Run("unsupported type panics", func(t *testing.T) {
-		testutils.AssertPanics(t, func() { Const([]int{1, 2, 3}) })
+		defer testutils.AssertPanics(t, "expected panic due to unsupported type")
+
+		Const([]int{1, 2, 3})
 	})
 }
 
