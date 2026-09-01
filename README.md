@@ -192,6 +192,10 @@ They are documented here so callers do not rely on unspecified behavior.
   A zero-match `JSONPath` patch is a successful no-op and produces a warning, regardless of action, because JSONPath selectors naturally match zero or more elements.
   An unmatched `remove` is also a successful no-op and produces a warning because the requested absence already holds.
   Do not rely on create-on-missing; a future version may reintroduce it behind a dedicated create action.
+- **Portable JSONPath profile.** JSONPath follows RFC 9535.
+  Every toolkit supports root, dot and quoted-bracket member selectors, non-negative array indices, object and array wildcards, homogeneous member or index selector lists, and forward array slices with omitted or non-negative bounds.
+  Portable overlays use only this subset.
+  Toolkits may accept additional non-portable extensions, but unsupported expressions are errors rather than zero matches.
 - **Error aggregation.** Every patch is attempted, failed patches do not retain partial mutations, and later patches and overlays continue.
   `Apply` returns successfully produced partial results and one aggregate error when any error occurred.
   Consumers choose how to display diagnostics and whether warnings should affect their own process exit status.
