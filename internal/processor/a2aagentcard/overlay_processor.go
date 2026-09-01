@@ -94,9 +94,9 @@ func (self *OverlayProcessor) merge(content map[string]any, expression jp.Expr, 
 		return utils.SafeCast[map[string]any](utils.DeepMerge(content, value)), nil
 	}
 
-	// no create-on-missing: a selector that matches nothing is an error
+	// A valid JSONPath that matches nothing is a no-op.
 	if !expression.Has(content) {
-		return nil, errors.Errorf("no such element: %s", expression.String())
+		return content, nil
 	}
 
 	for _, location := range expression.Locate(content, 0) {
@@ -113,9 +113,9 @@ func (self *OverlayProcessor) update(content map[string]any, expression jp.Expr,
 		return maps.Clone(utils.SafeCast[map[string]any](value)), nil
 	}
 
-	// no create-on-missing: a selector that matches nothing is an error
+	// A valid JSONPath that matches nothing is a no-op.
 	if !expression.Has(content) {
-		return nil, errors.Errorf("no such element: %s", expression.String())
+		return content, nil
 	}
 
 	for _, location := range expression.Locate(content, 0) {

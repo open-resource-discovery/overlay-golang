@@ -290,11 +290,9 @@ func TestApply_Merge_JSONPath_AddsKey(t *testing.T) {
 	}
 }
 
-func TestApply_Merge_JSONPath_NonExistentPath_ReturnsError(t *testing.T) {
-	// A selector that matches nothing is an error: overlays never create a
-	// missing target, not even via jsonPath.
+func TestApply_Merge_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
-	_, err := p.Apply(model.OverlayDefinition{
+	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "merge",
@@ -303,15 +301,15 @@ func TestApply_Merge_JSONPath_NonExistentPath_ReturnsError(t *testing.T) {
 			},
 		}},
 	})
-	if err == nil {
-		t.Fatal("expected an error for a merge that matches no existing node, got nil")
+	namespace := result["ODataDemo"].(map[string]any)
+	if _, exists := namespace["NonExistent"]; exists {
+		t.Fatal("zero-match JSONPath merge must not create a node")
 	}
 }
 
-func TestApply_Update_JSONPath_NonExistentPath_ReturnsError(t *testing.T) {
-	// An update via a non-existent JSONPath is an error, not a create.
+func TestApply_Update_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
-	_, err := p.Apply(model.OverlayDefinition{
+	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
 				Action:   "update",
@@ -320,8 +318,9 @@ func TestApply_Update_JSONPath_NonExistentPath_ReturnsError(t *testing.T) {
 			},
 		}},
 	})
-	if err == nil {
-		t.Fatal("expected an error for an update that matches no existing node, got nil")
+	namespace := result["ODataDemo"].(map[string]any)
+	if _, exists := namespace["NewNode"]; exists {
+		t.Fatal("zero-match JSONPath update must not create a node")
 	}
 }
 

@@ -545,26 +545,23 @@ func TestApply_MergeSelector_NotFound_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestApply_Merge_JSONPath_NotFound_ReturnsError(t *testing.T) {
-	// A selector that matches nothing is an error: overlays never create a
-	// missing target, not even via jsonPath.
+func TestApply_Merge_JSONPath_NotFound_IsNoOp(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
-	_, err := p.Apply(testutils.OnePatch("merge",
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.nonexistent"},
 		map[string]any{"x": "created"}))
-	if err == nil {
-		t.Fatal("expected an error for a merge that matches no existing node, got nil")
+	if _, exists := result["nonexistent"]; exists {
+		t.Fatal("zero-match JSONPath merge must not create a node")
 	}
 }
 
-func TestApply_Update_JSONPath_NotFound_ReturnsError(t *testing.T) {
-	// An update via a non-existent JSONPath is an error, not a create.
+func TestApply_Update_JSONPath_NotFound_IsNoOp(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
-	_, err := p.Apply(testutils.OnePatch("update",
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{JSONPath: "$.newnode"},
 		map[string]any{"key": "value"}))
-	if err == nil {
-		t.Fatal("expected an error for an update that matches no existing node, got nil")
+	if _, exists := result["newnode"]; exists {
+		t.Fatal("zero-match JSONPath update must not create a node")
 	}
 }
 

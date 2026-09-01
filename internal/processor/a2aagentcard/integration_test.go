@@ -165,17 +165,12 @@ func TestIntegration_Remove_JSONPath_DeletesSubkey(t *testing.T) {
 	)
 }
 
-// ---- merge: JSONPath — node creation ----------------------------------------
+// ---- merge: JSONPath no-match -----------------------------------------------
 
-// TestIntegration_Merge_JSONPath_NonExistentNode_ReturnsError merges into
-// $.licensing, a path that does not exist in the base document, verifying that
-// the overlay errors rather than creating the missing node.
-func TestIntegration_Merge_JSONPath_NonExistentNode_ReturnsError(t *testing.T) {
-	definition := model.ResourceDefinition{
-		MediaType: "application/json",
-		Content:   integrationInput,
-	}
-	_, err := testutils.AssertNoError(NewOverlayProcessor(definition)).Apply(testutils.OnePatch(
+// TestIntegration_Merge_JSONPath_NonExistentNode_IsNoOp verifies that a valid
+// JSONPath with zero matches does not create the missing node.
+func TestIntegration_Merge_JSONPath_NonExistentNode_IsNoOp(t *testing.T) {
+	result := applyIntegration(t, testutils.OnePatch(
 		"merge",
 		model.Selector{JSONPath: "$.licensing"},
 		map[string]any{
@@ -183,8 +178,8 @@ func TestIntegration_Merge_JSONPath_NonExistentNode_ReturnsError(t *testing.T) {
 			"contact": "licensing@sap.com",
 		},
 	))
-	if err == nil {
-		t.Fatal("expected an error for a merge that matches no existing node, got nil")
+	if _, exists := result["licensing"]; exists {
+		t.Fatal("zero-match JSONPath merge must not create a node")
 	}
 }
 

@@ -196,17 +196,14 @@ func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, 
 
 func (self *OverlayProcessor) decomposeSyntacticSelector(content map[string]any, patch model.Patch) ([]model.Patch, error) {
 	if patch.Data == nil || utils.OneOf(patch.Action, "merge", "update") {
-		// A raw jsonPath merge/update must match existing structure: overlays
-		// never create a missing target. (Semantic selectors validate the
-		// element during decomposition and add their annotation leaves onto it,
-		// so they do not pass through here. remove is a no-op on no-match.)
+		// A raw jsonPath merge/update that matches nothing is a no-op.
 		if utils.OneOf(patch.Action, "merge", "update") && len(patch.Selector.JSONPath) > 0 {
 			expression, err := jp.ParseString(patch.Selector.JSONPath)
 			if err != nil {
 				return nil, err
 			}
 			if !expression.Has(content) {
-				return nil, errors.Errorf("no such element: %s", expression.String())
+				return []model.Patch{}, nil
 			}
 		}
 
