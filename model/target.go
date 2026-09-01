@@ -1,5 +1,11 @@
 package model
 
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
+
 // Target identifies the resource or definition file being patched.
 // At least one of OrdID, URL, CorrelationIDs, or DefinitionType must be set.
 type Target struct {
@@ -22,4 +28,8 @@ type Target struct {
 	// SystemInstance further scopes the target to a specific tenant when
 	// Perspective is "system-instance".
 	SystemInstance *SystemInstance `json:"systemInstance,omitempty"`
+}
+
+func (self Target) String() string {
+	return string(utils.First(json.Marshal(self)))
 }

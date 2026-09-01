@@ -1,6 +1,10 @@
 package model
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
 
 // Patch is a single patch action applied to the element identified by Selector.
 type Patch struct {
@@ -26,4 +30,8 @@ type Patch struct {
 	// Meta holds arbitrary out-of-band metadata about this individual patch.
 	// Never applied to the target document.
 	Meta map[string]json.RawMessage `json:"meta,omitempty"`
+}
+
+func (self Patch) String() string {
+	return string(utils.First(json.Marshal(self)))
 }

@@ -1,5 +1,11 @@
 package model
 
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
+
 // SystemType represents the abstract type of an application or service from
 // an operational perspective.
 type SystemType struct {
@@ -10,4 +16,8 @@ type SystemType struct {
 
 	// CorrelationIDs link this system type to external systems of record.
 	CorrelationIDs []string `json:"correlationIds,omitempty"`
+}
+
+func (self SystemType) String() string {
+	return string(utils.First(json.Marshal(self)))
 }
