@@ -158,7 +158,7 @@
       },
       "ID": {},
       "Price": {
-        "$Nullable": false,
+        "$Nullable": true,
         "$Type": "Edm.Decimal",
         "@Core.Description": "Mandatory price field."
       },
