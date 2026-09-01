@@ -8,6 +8,7 @@ import (
 	"github.com/ohler55/ojg/jp"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/jputils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/marshaller"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/patching"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
@@ -30,31 +31,43 @@ func NewOverlayProcessor(definition model.ResourceDefinition) (*OverlayProcessor
 }
 
 func (self *OverlayProcessor) Apply(od model.OverlayDefinition) (model.ResourceDefinition, error) {
-	content, err := utils.SafeCast[map[string]any](clone.Clone(self.content)), error(nil)
+	return self.ApplyWithDiagnostics(od)
+}
 
-	for _, patch := range od.Overlay.Patches {
-		decomposed, err := self.decompose(content, patch)
-		if err != nil {
-			return model.ResourceDefinition{}, err
-		}
-
-		for _, dpatch := range decomposed {
-			if content, err = self.apply(dpatch, content); err != nil {
-				return model.ResourceDefinition{}, err
+func (self *OverlayProcessor) ApplyWithDiagnostics(od model.OverlayDefinition, handlers ...model.DiagnosticHandler) (model.ResourceDefinition, error) {
+	content := utils.SafeCast[map[string]any](clone.Clone(self.content))
+	content, patchErr := patching.Run(
+		content,
+		od.Overlay.Patches,
+		func(value map[string]any) map[string]any { return utils.SafeCast[map[string]any](clone.Clone(value)) },
+		patching.CheckJSONPathMatch[map[string]any],
+		func(patch model.Patch, candidate map[string]any) (map[string]any, error) {
+			decomposed, err := self.decompose(candidate, patch)
+			if err != nil {
+				return candidate, err
 			}
-		}
-	}
+			for _, decomposedPatch := range decomposed {
+				candidate, err = self.apply(decomposedPatch, candidate)
+				if err != nil {
+					return candidate, err
+				}
+			}
+			return candidate, nil
+		},
+		handlers...,
+	)
 
 	serialized, err := marshaller.Marshal(self.definition.MediaType, content)
 	if err != nil {
 		return model.ResourceDefinition{}, err
 	}
 
-	return utils.Clone(self.definition, func(rd *model.ResourceDefinition) {
+	result := utils.Clone(self.definition, func(rd *model.ResourceDefinition) {
 		rd.Content = serialized
 		rd.Purpose = od.Purpose
 		rd.Visibility = od.Overlay.Visibility
-	}), nil
+	})
+	return result, patchErr
 }
 
 func (self *OverlayProcessor) apply(patch model.Patch, content map[string]any) (map[string]any, error) {

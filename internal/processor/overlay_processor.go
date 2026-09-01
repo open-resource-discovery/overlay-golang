@@ -18,6 +18,10 @@ type OverlayProcessor interface {
 	// Apply applies the given Patch to this resource definition and returns
 	// the patched definition or an error if the patch could not be applied.
 	Apply(overlay model.OverlayDefinition) (model.ResourceDefinition, error)
+
+	// ApplyWithDiagnostics applies the given Patch to this resource definition and returns
+	// the patched definition, diagnostics, and any aggregate error.
+	ApplyWithDiagnostics(overlay model.OverlayDefinition, handlers ...model.DiagnosticHandler) (model.ResourceDefinition, error)
 }
 
 func CreateFor(definition model.ResourceDefinition) (OverlayProcessor, error) {

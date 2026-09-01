@@ -4,12 +4,103 @@ package overlays
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
+
+func TestApply_CollectsPatchErrorsAndContinues(t *testing.T) {
+	definition := model.ResourceDefinition{
+		DefinitionType: "openapi-v3",
+		MediaType:      "application/json",
+		Content:        `{"openapi":"3.0.0","paths":{}}`,
+	}
+	overlays := []model.OverlayDefinition{
+		{Overlay: model.Overlay{
+			Target: &model.Target{},
+			Patches: []model.Patch{
+				{Action: "remove", Selector: &model.Selector{Root: utils.Ptr(true)}},
+				{Action: "remove", Selector: &model.Selector{Root: utils.Ptr(true)}},
+				{Action: "merge", Selector: &model.Selector{Root: utils.Ptr(true)}, Data: map[string]any{"x-applied-after-errors": true}},
+			},
+		}},
+		{Overlay: model.Overlay{
+			Target: &model.Target{},
+			Patches: []model.Patch{
+				{Action: "merge", Selector: &model.Selector{Root: utils.Ptr(true)}, Data: map[string]any{"x-applied-in-later-overlay": true}},
+			},
+		}},
+	}
+	var diagnostics []model.Diagnostic
+
+	results, err := Apply(definition, overlays, func(diagnostic model.Diagnostic) {
+		diagnostics = append(diagnostics, diagnostic)
+	})
+
+	if err == nil {
+		t.Fatal("expected an aggregate error")
+	}
+	if !strings.Contains(err.Error(), "patch #1") || !strings.Contains(err.Error(), "patch #2") {
+		t.Fatalf("aggregate error does not contain both patch failures: %v", err)
+	}
+	if len(diagnostics) != 2 {
+		t.Fatalf("got %d diagnostics, want 2", len(diagnostics))
+	}
+	for index, diagnostic := range diagnostics {
+		if diagnostic.OverlayIndex != 0 || diagnostic.PatchIndex != index {
+			t.Fatalf("got diagnostic location (%d, %d), want (0, %d)", diagnostic.OverlayIndex, diagnostic.PatchIndex, index)
+		}
+	}
+	if len(results) != 2 {
+		t.Fatalf("got %d partial results, want 2", len(results))
+	}
+	result := testutils.UnmarshalResult[map[string]any](t, definition.MediaType, results[0].Content)
+	if result["x-applied-after-errors"] != true {
+		t.Fatal("later valid patch was not applied")
+	}
+	laterResult := testutils.UnmarshalResult[map[string]any](t, definition.MediaType, results[1].Content)
+	if laterResult["x-applied-in-later-overlay"] != true {
+		t.Fatal("later overlay was not applied")
+	}
+}
+
+func TestApply_ReportsNoMatchWarningsWithoutError(t *testing.T) {
+	definition := model.ResourceDefinition{
+		DefinitionType: "openapi-v3",
+		MediaType:      "application/json",
+		Content:        `{"openapi":"3.0.0","paths":{}}`,
+	}
+	overlay := model.OverlayDefinition{Overlay: model.Overlay{
+		Target: &model.Target{},
+		Patches: []model.Patch{
+			{Action: "merge", Selector: &model.Selector{JSONPath: "$.missing"}, Data: map[string]any{"value": true}},
+			{Action: "remove", Selector: &model.Selector{Operation: "missingOperation"}},
+		},
+	}}
+	var diagnostics []model.Diagnostic
+
+	results, err := Apply(definition, []model.OverlayDefinition{overlay}, func(diagnostic model.Diagnostic) {
+		diagnostics = append(diagnostics, diagnostic)
+	})
+
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("got %d results, want 1", len(results))
+	}
+	if len(diagnostics) != 2 {
+		t.Fatalf("got %d diagnostics, want 2", len(diagnostics))
+	}
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Severity != model.DiagnosticSeverityWarning {
+			t.Fatalf("got severity %q, want warning", diagnostic.Severity)
+		}
+	}
+}
 
 // ---- helpers ----------------------------------------------------------------
 

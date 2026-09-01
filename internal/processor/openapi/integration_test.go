@@ -108,7 +108,7 @@ func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
 					MediaType: fmt.Sprintf("application/%s", format),
 				}))
 				_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
-				if err == nil || err.Error() != "removing the document root is not supported" {
+				if err == nil || !strings.Contains(err.Error(), "removing the document root is not supported") {
 					t.Fatalf("expected root-removal error, got %v", err)
 				}
 			})

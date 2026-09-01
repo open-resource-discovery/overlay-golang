@@ -8,7 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [unreleased]
 
+- Continue applying patches after failures, return partial results with an aggregate error, and expose structured warnings and errors through optional diagnostic handlers.
+
 ## [[0.0.1](https://github.com/open-resource-discovery/overlay-golang/releases/tag/v0.0.1)] - 2026-08-28
 
 Initial implementation of ORD overlays in Golang
-

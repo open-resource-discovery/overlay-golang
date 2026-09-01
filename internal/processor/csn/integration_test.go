@@ -3,6 +3,7 @@
 package csn
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
@@ -205,7 +206,7 @@ func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
 				Content: integrationInput, MediaType: "application/json",
 			}))
 			_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
-			if err == nil || err.Error() != "removing the document root is not supported" {
+			if err == nil || !strings.Contains(err.Error(), "removing the document root is not supported") {
 				t.Fatalf("expected root-removal error, got %v", err)
 			}
 		})

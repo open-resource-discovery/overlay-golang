@@ -1,6 +1,9 @@
 package overlays
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/go-errors/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/processor"
 	"github.com/open-resource-discovery/overlay-golang/model"
@@ -30,7 +33,7 @@ func IsApplicable(definition model.ResourceDefinition, overlay model.OverlayDefi
 	return true
 }
 
-func Apply(definition model.ResourceDefinition, overlays []model.OverlayDefinition) (results []model.ResourceDefinition, err error) {
+func Apply(definition model.ResourceDefinition, overlays []model.OverlayDefinition, handlers ...model.DiagnosticHandler) (results []model.ResourceDefinition, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.WrapPrefix(r, "unexpected error occurred", 0)
@@ -40,16 +43,30 @@ func Apply(definition model.ResourceDefinition, overlays []model.OverlayDefiniti
 	if proc, err := processor.CreateFor(definition); err != nil {
 		return nil, errors.WrapPrefix(err, "failed to process resource definition", 0)
 	} else {
-		for _, overlay := range overlays {
+		var failures []string
+		for overlayIndex, overlay := range overlays {
 			if !IsApplicable(definition, overlay) {
 				continue
 			}
 
-			if result, err := proc.Apply(overlay); err != nil {
-				return nil, errors.WrapPrefix(err, "failed to apply overlay", 0)
-			} else {
+			forward := func(diagnostic model.Diagnostic) {
+				diagnostic.OverlayIndex = overlayIndex
+				for _, handler := range handlers {
+					if handler != nil {
+						handler(diagnostic)
+					}
+				}
+			}
+			result, applyErr := proc.ApplyWithDiagnostics(overlay, forward)
+			if result.Content != "" {
 				results = append(results, result)
 			}
+			if applyErr != nil {
+				failures = append(failures, fmt.Sprintf("- overlay #%d: %v", overlayIndex+1, applyErr))
+			}
+		}
+		if len(failures) > 0 {
+			return results, fmt.Errorf("failed to apply overlays:\n%s", strings.Join(failures, "\n"))
 		}
 	}
 

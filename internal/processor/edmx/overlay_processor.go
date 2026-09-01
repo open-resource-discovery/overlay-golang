@@ -1,12 +1,11 @@
 package edmx
 
 import (
-	"strings"
-
 	"github.com/go-errors/errors"
 	"github.com/huandu/go-clone"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/jputils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/marshaller"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/patching"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	xml2json "github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 	"github.com/open-resource-discovery/overlay-golang/model"
@@ -33,39 +32,50 @@ func NewOverlayProcessor(definition model.ResourceDefinition) (*OverlayProcessor
 }
 
 func (self *OverlayProcessor) Apply(definition model.OverlayDefinition) (model.ResourceDefinition, error) {
-	document := clone.Clone(self.content).(xml2json.Document) // Create a copy of the content to avoid mutating the original definition
+	return self.ApplyWithDiagnostics(definition)
+}
 
-	for _, patch := range definition.Overlay.Patches {
-		for _, decomposed := range self.Decompose(patch) {
-			pointer, err := NewPointer(document, decomposed.Selector)
-			if err != nil {
-				if patch.Action == "remove" && strings.HasPrefix(err.Error(), "no such element:") {
-					continue
+func (self *OverlayProcessor) ApplyWithDiagnostics(definition model.OverlayDefinition, handlers ...model.DiagnosticHandler) (model.ResourceDefinition, error) {
+	document := clone.Clone(self.content).(xml2json.Document)
+	document, patchErr := patching.Run(
+		document,
+		definition.Overlay.Patches,
+		func(value xml2json.Document) xml2json.Document { return clone.Clone(value).(xml2json.Document) },
+		nil,
+		func(patch model.Patch, candidate xml2json.Document) (xml2json.Document, error) {
+			var err error
+			for _, decomposed := range self.Decompose(patch) {
+				pointer, pointerErr := NewPointer(candidate, decomposed.Selector)
+				if pointerErr != nil {
+					return candidate, pointerErr
 				}
-				return model.ResourceDefinition{}, err
-			}
 
-			document, err = self.reconcile(document, pointer)
-			if err != nil {
-				return model.ResourceDefinition{}, err
-			}
+				candidate, err = self.reconcile(candidate, pointer)
+				if err != nil {
+					return candidate, err
+				}
 
-			if document, err = self.process(decomposed, document, pointer); err != nil {
-				return model.ResourceDefinition{}, err
+				candidate, err = self.process(decomposed, candidate, pointer)
+				if err != nil {
+					return candidate, err
+				}
 			}
-		}
-	}
+			return candidate, nil
+		},
+		handlers...,
+	)
 
 	serialized, err := marshaller.Marshal("application/xml", document)
 	if err != nil {
 		return model.ResourceDefinition{}, err
 	}
 
-	return utils.Clone(self.definition, func(rd *model.ResourceDefinition) {
+	result := utils.Clone(self.definition, func(rd *model.ResourceDefinition) {
 		rd.Content = serialized
 		rd.Purpose = definition.Purpose
 		rd.Visibility = definition.Overlay.Visibility
-	}), nil
+	})
+	return result, patchErr
 }
 
 func (self *OverlayProcessor) asAnnotations(data map[string]any) []xml2json.Node {
