@@ -4,12 +4,69 @@ package overlays
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
+
+func TestApply_EDMX_ODataV2_ReturnsUnsupportedErrorWithV4Workaround(t *testing.T) {
+	definition := model.ResourceDefinition{
+		DefinitionType: "edmx",
+		MediaType:      "application/xml",
+		Content: `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata">
+  <edmx:DataServices m:DataServiceVersion="2.0">
+    <Schema Namespace="Svc" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+      <EntityType Name="Book"/>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`,
+	}
+	overlay := testutils.OnePatch(
+		"merge",
+		model.Selector{EntityType: "Svc.Book"},
+		map[string]any{"@Core.Description": "A book"},
+	)
+	overlay.Overlay.Target = &model.Target{}
+
+	_, err := Apply(definition, []model.OverlayDefinition{overlay})
+	if err == nil {
+		t.Fatal("expected OData v2 EDMX to be rejected")
+	}
+	if message := err.Error(); !strings.Contains(message, "OData v2 EDMX") ||
+		!strings.Contains(message, "OData v4 EDMX") {
+		t.Fatalf("expected v2 rejection and v4 workaround hint, got: %v", err)
+	}
+}
+
+func TestApply_EDMX_RecognizesODataV2FromCSDLNamespace(t *testing.T) {
+	definition := model.ResourceDefinition{
+		DefinitionType: "edmx",
+		MediaType:      "application/xml",
+		Content: `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="1.0" xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="Svc" xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+      <EntityType Name="Book"/>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`,
+	}
+	overlay := testutils.OnePatch(
+		"merge",
+		model.Selector{EntityType: "Svc.Book"},
+		map[string]any{"@Core.Description": "A book"},
+	)
+	overlay.Overlay.Target = &model.Target{}
+
+	_, err := Apply(definition, []model.OverlayDefinition{overlay})
+	if err == nil || !strings.Contains(err.Error(), "OData v2 EDMX") {
+		t.Fatalf("expected OData v2 rejection, got: %v", err)
+	}
+}
 
 // ---- helpers ----------------------------------------------------------------
 

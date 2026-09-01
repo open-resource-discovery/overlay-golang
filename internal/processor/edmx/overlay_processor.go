@@ -1,6 +1,8 @@
 package edmx
 
 import (
+	"strings"
+
 	"github.com/huandu/go-clone"
 	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/jputils"
@@ -9,6 +11,12 @@ import (
 	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
+
+var odataV2EDMNamespaces = map[string]struct{}{
+	"http://schemas.microsoft.com/ado/2006/04/edm": {},
+	"http://schemas.microsoft.com/ado/2007/05/edm": {},
+	"http://schemas.microsoft.com/ado/2008/09/edm": {},
+}
 
 type OverlayProcessor struct {
 	PatchDecomposer
@@ -26,6 +34,12 @@ func NewOverlayProcessor(definition model.ResourceDefinition) *OverlayProcessor 
 }
 
 func (self *OverlayProcessor) Apply(definition model.OverlayDefinition) (model.ResourceDefinition, *errors.OverlayError) {
+	if isODataV2(self.content) {
+		return model.ResourceDefinition{}, errors.Create(errors.Severity_Error,
+			"applying an ORD Overlay to OData v2 EDMX is not supported; provide an OData v4 EDMX document that describes the OData v2 API and apply the overlay to that document",
+		)
+	}
+
 	content := clone.Clone(self.content).(xml2json.Document) // Create a copy of the content to avoid mutating the original definition
 	aggregated := utils.Reduce(
 		definition.Overlay.Patches,
@@ -60,6 +74,38 @@ func (self *OverlayProcessor) apply(patch model.Patch, document xml2json.Documen
 			return errors.Append(result, self.process(dpatch, document, pointer))
 		},
 	)
+}
+
+func isODataV2(document xml2json.Document) bool {
+	for _, dataService := range jputils.Expr(
+		"$",
+		"nodes",
+		jputils.Eq("@.name", "edmx:Edmx"),
+		"nodes",
+		jputils.Eq("@.name", "edmx:DataServices"),
+	).Locate(document, 0) {
+		for name, value := range dataService.First(document).(xml2json.Node).Attributes() {
+			if strings.HasSuffix(name, ":DataServiceVersion") && strings.HasPrefix(value, "2.") {
+				return true
+			}
+		}
+	}
+
+	for _, schema := range jputils.Expr(
+		"$",
+		"nodes",
+		jputils.Eq("@.name", "edmx:Edmx"),
+		"nodes",
+		jputils.Eq("@.name", "edmx:DataServices"),
+		"nodes",
+		jputils.Eq("@.name", "Schema"),
+	).Locate(document, 0) {
+		if _, ok := odataV2EDMNamespaces[schema.First(document).(xml2json.Node).Attribute("xmlns")]; ok {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (self *OverlayProcessor) asAnnotations(data map[string]any) []xml2json.Node {
