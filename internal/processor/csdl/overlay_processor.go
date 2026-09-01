@@ -123,11 +123,42 @@ func (self *OverlayProcessor) update(content map[string]any, expression jp.Expr,
 }
 
 func (self *OverlayProcessor) decompose(content map[string]any, patch model.Patch) ([]model.Patch, error) {
+	if patch.Action == "remove" && patch.Data == nil && len(patch.Selector.EnumType) > 0 && len(patch.Selector.PropertyType) > 0 {
+		return self.decomposeEnumMemberRemove(content, patch)
+	}
+
 	if patch.Data == nil || len(patch.Selector.JSONPath) > 0 || (patch.Selector.Root != nil && *patch.Selector.Root) {
 		return self.decomposeSyntacticSelector(content, patch)
 	}
 
 	return self.decomposeSemanticSelector(content, patch)
+}
+
+func (self *OverlayProcessor) decomposeEnumMemberRemove(content map[string]any, patch model.Patch) ([]model.Patch, error) {
+	expression, err := self.Resolve(content, patch.Selector)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]model.Patch, 0)
+	prefix := patch.Selector.PropertyType + "@"
+	for _, candidate := range jputils.Expr(expression, "*").Locate(content, 0) {
+		child, ok := candidate[len(candidate)-1].(jp.Child)
+		if !ok {
+			continue
+		}
+
+		name := string(child)
+		if name != patch.Selector.PropertyType && !strings.HasPrefix(name, prefix) {
+			continue
+		}
+
+		result = append(result, utils.Clone(patch, func(p *model.Patch) {
+			p.Selector = &model.Selector{JSONPath: candidate.String()}
+		}))
+	}
+
+	return result, nil
 }
 
 func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, patch model.Patch) ([]model.Patch, error) {

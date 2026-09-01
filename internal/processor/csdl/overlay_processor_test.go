@@ -443,6 +443,25 @@ func TestApply_Update_EnumTypeMember_LeavesOtherMembersUntouched(t *testing.T) {
 	}
 }
 
+func TestApply_Remove_EnumTypeMember_RemovesMemberAndItsAnnotations(t *testing.T) {
+	base := "{\"ODataDemo\":{\"FileAccess\":{\"$Kind\":\"EnumType\",\"Read\":1,\"Read@Core.Description\":\"read\",\"Write\":2,\"Write@Core.Description\":\"write\"}}}"
+	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
+		model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
+		nil,
+	))
+	fileAccess := testutils.Get(t, result, "ODataDemo", "FileAccess").(map[string]any)
+	if _, ok := fileAccess["Read"]; ok {
+		t.Error("expected Read member removed")
+	}
+	if _, ok := fileAccess["Read@Core.Description"]; ok {
+		t.Error("expected Read annotation removed")
+	}
+	if _, ok := fileAccess["Write"]; !ok || fileAccess["Write@Core.Description"] != "write" {
+		t.Errorf("expected sibling member preserved, got %v", fileAccess)
+	}
+}
+
 func TestApply_Update_Root_ReplacesDocument(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: `{"old":"value"}`, MediaType: "application/json"}))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
