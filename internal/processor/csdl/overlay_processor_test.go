@@ -576,16 +576,15 @@ func TestApply_Remove_JSONPath_NilData_DeletesNode(t *testing.T) {
 	}
 }
 
-func TestApply_Remove_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
+func TestApply_Remove_JSONPath_NonExistentPath_ReturnsError(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
-	// Should not error; expression.Has returns false → skipped
-	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
+	_, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "remove", Selector: &model.Selector{JSONPath: "$.ODataDemo.NonExistent"}, Data: nil},
 		}},
 	})
-	if testutils.Get(t, result, "ODataDemo") == nil {
-		t.Error("ODataDemo unexpectedly removed")
+	if err == nil {
+		t.Fatal("expected unmatched remove to return an error")
 	}
 }
 

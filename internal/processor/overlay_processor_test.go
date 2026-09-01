@@ -370,3 +370,36 @@ func TestCreateFor_ReturnedProcessor_ImplementsOverlayProcessorInterface(t *test
 		})
 	}
 }
+
+func TestApply_Remove_UnmatchedSelector_ReturnsError(t *testing.T) {
+	cases := []struct {
+		name       string
+		definition model.ResourceDefinition
+		selector   *model.Selector
+	}{
+		{"json", model.ResourceDefinition{MediaType: "application/json", Content: minimalJSON}, &model.Selector{JSONPath: "$.missing"}},
+		{"yaml", model.ResourceDefinition{MediaType: "application/yaml", Content: minimalYAML}, &model.Selector{JSONPath: "$.missing"}},
+		{"openapi", model.ResourceDefinition{DefinitionType: "openapi-v3", MediaType: "application/json", Content: minimalJSON}, &model.Selector{JSONPath: "$.missing"}},
+		{"csdl-json", model.ResourceDefinition{DefinitionType: "csdl-json", MediaType: "application/json", Content: minimalCSDL}, &model.Selector{JSONPath: "$.missing"}},
+		{"csn", model.ResourceDefinition{DefinitionType: "sap-csn-interop-effective-v1", MediaType: "application/json", Content: minimalCSN}, &model.Selector{JSONPath: "$.missing"}},
+		{"a2a", model.ResourceDefinition{DefinitionType: "a2a-agent-card", MediaType: "application/json", Content: minimalA2A}, &model.Selector{JSONPath: "$.missing"}},
+		{"edmx", model.ResourceDefinition{DefinitionType: "edmx", MediaType: "application/xml", Content: minimalXML}, &model.Selector{Namespace: "Missing"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p, err := CreateFor(tc.definition)
+			if err != nil {
+				t.Fatalf("CreateFor: %v", err)
+			}
+
+			_, err = p.Apply(model.OverlayDefinition{Overlay: model.Overlay{Patches: []model.Patch{{
+				Action:   "remove",
+				Selector: tc.selector,
+			}}}})
+			if err == nil {
+				t.Fatal("expected unmatched remove to return an error")
+			}
+		})
+	}
+}

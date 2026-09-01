@@ -80,7 +80,12 @@ func (self *OverlayProcessor) remove(content map[string]any, expression jp.Expr)
 		return nil, errors.Errorf("removing the document root is not supported")
 	}
 
-	for _, location := range expression.Locate(content, 0) {
+	locations := expression.Locate(content, 0)
+	if len(locations) == 0 {
+		return nil, errors.Errorf("no such element: %s", expression.String())
+	}
+
+	for _, location := range locations {
 		if _, err := location.Remove(content); err != nil {
 			return nil, err
 		}
