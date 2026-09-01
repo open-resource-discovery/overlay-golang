@@ -161,7 +161,8 @@ type Patch struct {
 
 #### `Selector`
 
-Exactly one field should be set per patch. Concept-level selectors are preferred over `JSONPath` — they are resilient to format changes and document restructuring.
+Exactly one field should be set per patch.
+Concept-level selectors are preferred over `JSONPath` because they are resilient to format changes and document restructuring.
 
 | Field | Targets |
 |---|---|
@@ -195,7 +196,7 @@ They are documented here so callers do not rely on unspecified behavior.
   New structure belongs in the source CSDL/CDS, not in an overlay.
 - **CSDL JSON enum members** are scalars, so member annotations are written as sibling keys on the enum type (`Read@Core.Description`), not merged into the member value.
 
-Some of these behaviors are not yet explicitly stated in the spec. See the [ORD Overlay Specification](https://open-resource-discovery.github.io/specification/spec-v1/interfaces/overlay); clarifications are in progress.
+These behaviors are specified by the [ORD Overlay specification clarification](https://github.com/open-resource-discovery/specification/pull/171).
 
 ### Running the tests
 
