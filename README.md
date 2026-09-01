@@ -187,6 +187,8 @@ They are documented here so callers do not rely on unspecified behavior.
 - **No-match / create-on-missing.** No selector creates a missing target.
   A `merge` or `update` whose selector matches nothing returns an error.
   Do not rely on create-on-missing; a future version may reintroduce it behind a dedicated create action.
+- **The document root cannot be removed.** An omitted-data `remove` using `root` or `JSONPath: "$"` returns an error.
+  Use `update` when the complete document must be replaced.
 - **EDMX targets are annotation-only.** For the `edmx` (OData XML) processor, overlays add, replace, and remove annotations on existing structure.
   They cannot create new structural elements (EntityType, EntitySet, Property, Function/Action, EnumType, ComplexType); those must already exist in the source schema.
   Combined with the note above (no `Root`/`JSONPath` for `edmx`), there is no structural-authoring path.
