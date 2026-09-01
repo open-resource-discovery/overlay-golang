@@ -290,9 +290,7 @@ func TestApply_Merge_JSONPath_AddsKey(t *testing.T) {
 	}
 }
 
-func TestApply_Merge_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
-	// JSONPath selectors may now point to non-existing parts of the document.
-	// A merge via a non-existent path creates the node rather than being a no-op.
+func TestApply_Merge_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
@@ -303,21 +301,13 @@ func TestApply_Merge_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 			},
 		}},
 	})
-	node := testutils.Get(t, result, "ODataDemo", "NonExistent")
-	if node == nil {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("ODataDemo.NonExistent: expected map, got %T", node)
-	}
-	if m["@x"] != "created" {
-		t.Errorf("ODataDemo.NonExistent['@x']: got %v, want %q", m["@x"], "created")
+	namespace := result["ODataDemo"].(map[string]any)
+	if _, exists := namespace["NonExistent"]; exists {
+		t.Fatal("zero-match JSONPath merge must not create a node")
 	}
 }
 
-func TestApply_Update_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
-	// An update via a non-existent JSONPath creates the node rather than being a no-op.
+func TestApply_Update_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
@@ -328,16 +318,9 @@ func TestApply_Update_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 			},
 		}},
 	})
-	node := testutils.Get(t, result, "ODataDemo", "NewNode")
-	if node == nil {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("ODataDemo.NewNode: expected map, got %T", node)
-	}
-	if m["@x"] != "value" {
-		t.Errorf("ODataDemo.NewNode['@x']: got %v, want %q", m["@x"], "value")
+	namespace := result["ODataDemo"].(map[string]any)
+	if _, exists := namespace["NewNode"]; exists {
+		t.Fatal("zero-match JSONPath update must not create a node")
 	}
 }
 

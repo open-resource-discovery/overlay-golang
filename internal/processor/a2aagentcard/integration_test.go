@@ -187,23 +187,22 @@ func TestIntegration_Remove_JSONPath_DeletesSubkey(t *testing.T) {
 	)
 }
 
-// ---- merge: JSONPath — node creation ----------------------------------------
+// ---- merge: JSONPath no-match -----------------------------------------------
 
-// TestIntegration_Merge_JSONPath_CreatesNonExistentNode merges into $.licensing,
-// a path that does not exist in the base document, verifying that the node is created.
-func TestIntegration_Merge_JSONPath_CreatesNonExistentNode(t *testing.T) {
-	testutils.AssertDeepEquals(
-		t,
-		loadExpected("merge_jsonpath_create_node_expected.json"),
-		applyIntegration(t, testutils.OnePatch(
-			"merge",
-			model.Selector{JSONPath: "$.licensing"},
-			map[string]any{
-				"type":    "commercial",
-				"contact": "licensing@sap.com",
-			},
-		)),
-	)
+// TestIntegration_Merge_JSONPath_NonExistentNode_IsNoOp verifies that a valid
+// JSONPath with zero matches does not create the missing node.
+func TestIntegration_Merge_JSONPath_NonExistentNode_IsNoOp(t *testing.T) {
+	result := applyIntegration(t, testutils.OnePatch(
+		"merge",
+		model.Selector{JSONPath: "$.licensing"},
+		map[string]any{
+			"type":    "commercial",
+			"contact": "licensing@sap.com",
+		},
+	))
+	if _, exists := result["licensing"]; exists {
+		t.Fatal("zero-match JSONPath merge must not create a node")
+	}
 }
 
 // ---- merge: operation selector ----------------------------------------------

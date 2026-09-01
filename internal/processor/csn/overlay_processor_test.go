@@ -517,44 +517,23 @@ func TestApply_MergeSelector_NotFound_ReturnsError(t *testing.T) {
 	}
 }
 
-func TestApply_Merge_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
-	// JSONPath selectors may point to non-existing parts of the document.
-	// A merge via a non-existent path creates the node rather than being a no-op.
+func TestApply_Merge_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 	p := mustNewProcessor(t, flightContent)
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.nonexistent"},
 		map[string]any{"x": "created"}))
-
-	node, exists := result["nonexistent"]
-	if !exists {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("nonexistent: expected map, got %T", node)
-	}
-	if m["x"] != "created" {
-		t.Errorf("nonexistent.x: got %v, want %q", m["x"], "created")
+	if _, exists := result["nonexistent"]; exists {
+		t.Fatal("zero-match JSONPath merge must not create a node")
 	}
 }
 
-func TestApply_Update_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
-	// A update via a non-existent JSONPath creates the node rather than being a no-op.
+func TestApply_Update_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 	p := mustNewProcessor(t, flightContent)
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{JSONPath: "$.newnode"},
 		map[string]any{"key": "value"}))
-
-	node, exists := result["newnode"]
-	if !exists {
-		t.Fatal("expected node to be created for non-existent JSONPath, but key is absent")
-	}
-	m, ok := node.(map[string]any)
-	if !ok {
-		t.Fatalf("newnode: expected map, got %T", node)
-	}
-	if m["key"] != "value" {
-		t.Errorf("newnode.key: got %v, want %q", m["key"], "value")
+	if _, exists := result["newnode"]; exists {
+		t.Fatal("zero-match JSONPath update must not create a node")
 	}
 }
 
