@@ -123,7 +123,7 @@ func (self *OverlayProcessor) update(content map[string]any, expression jp.Expr,
 }
 
 func (self *OverlayProcessor) decompose(content map[string]any, patch model.Patch) ([]model.Patch, error) {
-	if patch.Data == nil || len(patch.Selector.JSONPath) > 0 || (patch.Selector.Root != nil && *patch.Selector.Root) {
+	if len(patch.Selector.JSONPath) > 0 || (patch.Selector.Root != nil && *patch.Selector.Root) {
 		return self.decomposeSyntacticSelector(content, patch)
 	}
 
@@ -133,20 +133,21 @@ func (self *OverlayProcessor) decompose(content map[string]any, patch model.Patc
 func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, patch model.Patch) ([]model.Patch, error) {
 	result := make([]model.Patch, 0)
 	data := utils.SafeCast[map[string]any](patch.Data)
+	isEnumTypeMemberSelector := len(patch.Selector.EnumType) > 0 && len(patch.Selector.PropertyType) > 0
 	expression, err := self.Resolve(content, patch.Selector)
 	if err != nil {
 		return nil, err
 	}
 
-	if patch.Action == "update" {
-		// Updates for everything but an enum type member can be applied directly
-		if len(patch.Selector.EnumType) == 0 || len(patch.Selector.PropertyType) == 0 {
-			return append(result, utils.Clone(patch, func(p *model.Patch) {
-				p.Selector = &model.Selector{JSONPath: expression.String()}
-			})), nil
-		}
+	// Updates for everything but enum types and enum type members shall be applied directly
+	if patch.Action == "update" && len(patch.Selector.EnumType) == 0 {
+		return append(result, utils.Clone(patch, func(p *model.Patch) {
+			p.Selector = &model.Selector{JSONPath: expression.String()}
+		})), nil
+	}
 
-		// Special handling for update of an enum type member - remove all existing annotations first
+	// Update/remove of an enum type member shall remove all of its annotations first
+	if isEnumTypeMemberSelector && (patch.Action == "update" || (patch.Action == "remove" && patch.Data == nil)) {
 		for _, candidate := range jputils.Expr(expression, "*").Locate(content, 0) {
 			if child, ok := candidate[len(candidate)-1].(jp.Child); ok && strings.HasPrefix(string(child), patch.Selector.PropertyType+"@") {
 				result = append(result, utils.Clone(patch, func(p *model.Patch) {
@@ -156,6 +157,19 @@ func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, 
 				}))
 			}
 		}
+	}
+
+	// Simple removes can now be applied directly
+	if patch.Action == "remove" && patch.Data == nil {
+		return append(result, utils.Clone(patch, func(p *model.Patch) {
+			p.Selector = &model.Selector{
+				JSONPath: utils.Ternary(
+					isEnumTypeMemberSelector,
+					expression.Child(patch.Selector.PropertyType),
+					expression,
+				).String(),
+			}
+		})), nil
 	}
 
 	// Decompose the remaining annotations into separate patches, each with a selector that includes the annotation name
