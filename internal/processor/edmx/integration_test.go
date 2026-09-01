@@ -121,6 +121,39 @@ func TestIntegration_Merge_Namespace_AddsSchemaAnnotation(t *testing.T) {
 	)
 }
 
+// TestIntegration_Merge_QualifiedAnnotations_PreservesBothQualifiers verifies
+// that annotations with the same term and different qualifiers remain distinct.
+func TestIntegration_Merge_QualifiedAnnotations_PreservesBothQualifiers(t *testing.T) {
+	input := testutils.LoadFixture("testdata/qualified_annotations.xml")
+	p, err := NewOverlayProcessor(model.ResourceDefinition{Content: input})
+	if err != nil {
+		t.Fatalf("NewOverlayProcessor: %v", err)
+	}
+
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{Patches: []model.Patch{
+			{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "CatalogService.Books"},
+				Data:     map[string]any{"@Core.Description#Q1": "First description"},
+			},
+			{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "CatalogService.Books"},
+				Data:     map[string]any{"@Core.Description#Q2": "Second description"},
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+
+	testutils.AssertDeepEquals(t,
+		loadIntegrationExpected(t, "merge_qualified_annotations_expected.xml"),
+		normalizeXML(t, result.Content),
+	)
+}
+
 // ---- update: EntityType selector --------------------------------------------
 
 // TestIntegration_Update_EntityType_ReplacesAnnotationsBlock verifies that
