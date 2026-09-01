@@ -33,6 +33,16 @@ func (self *OverlayProcessor) Apply(od model.OverlayDefinition) (model.ResourceD
 	content, err := utils.SafeCast[map[string]any](clone.Clone(self.content)), error(nil)
 
 	for _, patch := range od.Overlay.Patches {
+		if patch.Action == "remove" {
+			expression, resolveErr := self.resolve(patch.Selector)
+			if resolveErr != nil {
+				return model.ResourceDefinition{}, resolveErr
+			}
+			if !jputils.IsRoot(expression) && !expression.Has(content) {
+				return model.ResourceDefinition{}, errors.Errorf("no such element: %s", expression.String())
+			}
+		}
+
 		decomposed, err := self.decompose(content, patch)
 		if err != nil {
 			return model.ResourceDefinition{}, err
@@ -81,10 +91,6 @@ func (self *OverlayProcessor) remove(content map[string]any, expression jp.Expr)
 	}
 
 	locations := expression.Locate(content, 0)
-	if len(locations) == 0 {
-		return nil, errors.Errorf("no such element: %s", expression.String())
-	}
-
 	for _, location := range locations {
 		if _, err := location.Remove(content); err != nil {
 			return nil, err

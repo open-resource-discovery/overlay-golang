@@ -3,8 +3,11 @@
 package processor
 
 import (
+	"reflect"
 	"testing"
 
+	"github.com/open-resource-discovery/overlay-golang/internal/common/marshaller"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
 
@@ -399,6 +402,50 @@ func TestApply_Remove_UnmatchedSelector_ReturnsError(t *testing.T) {
 			}}}})
 			if err == nil {
 				t.Fatal("expected unmatched remove to return an error")
+			}
+		})
+	}
+}
+
+func TestApply_Remove_MissingMaskField_IsNoOp(t *testing.T) {
+	cases := []struct {
+		name       string
+		definition model.ResourceDefinition
+	}{
+		{"json", model.ResourceDefinition{MediaType: "application/json", Content: minimalJSON}},
+		{"yaml", model.ResourceDefinition{MediaType: "application/yaml", Content: minimalYAML}},
+		{"openapi", model.ResourceDefinition{DefinitionType: "openapi-v3", MediaType: "application/json", Content: minimalJSON}},
+		{"csdl-json", model.ResourceDefinition{DefinitionType: "csdl-json", MediaType: "application/json", Content: minimalCSDL}},
+		{"csn", model.ResourceDefinition{DefinitionType: "sap-csn-interop-effective-v1", MediaType: "application/json", Content: minimalCSN}},
+		{"a2a", model.ResourceDefinition{DefinitionType: "a2a-agent-card", MediaType: "application/json", Content: minimalA2A}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p, err := CreateFor(tc.definition)
+			if err != nil {
+				t.Fatalf("CreateFor: %v", err)
+			}
+
+			result, err := p.Apply(model.OverlayDefinition{Overlay: model.Overlay{Patches: []model.Patch{{
+				Action:   "remove",
+				Selector: &model.Selector{Root: utils.Ptr(true)},
+				Data:     map[string]any{"missing": nil},
+			}}}})
+			if err != nil {
+				t.Fatalf("Apply: %v", err)
+			}
+
+			want, err := marshaller.Unmarshal(tc.definition.MediaType, tc.definition.Content)
+			if err != nil {
+				t.Fatalf("unmarshal input: %v", err)
+			}
+			got, err := marshaller.Unmarshal(tc.definition.MediaType, result.Content)
+			if err != nil {
+				t.Fatalf("unmarshal result: %v", err)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("missing removal-mask field changed the document: got %#v, want %#v", got, want)
 			}
 		})
 	}

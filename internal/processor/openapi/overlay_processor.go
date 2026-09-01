@@ -81,10 +81,6 @@ func (self *OverlayProcessor) remove(content map[string]any, expression jp.Expr)
 	}
 
 	locations := expression.Locate(content, 0)
-	if len(locations) == 0 {
-		return nil, errors.Errorf("no such element: %s", expression.String())
-	}
-
 	for _, location := range locations {
 		if _, err := location.Remove(content); err != nil {
 			return nil, err
