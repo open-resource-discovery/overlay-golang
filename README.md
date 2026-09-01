@@ -58,6 +58,8 @@ if err != nil {
 ```
 
 `Apply` returns one `model.ResourceDefinition` per overlay whose `Target` matched the definition. Each result's `Content` field holds the patched document as a string.
+It attempts every patch and applicable overlay, applies each patch atomically, and returns successfully produced partial results together with one aggregate error when any patch fails.
+Pass an optional `model.DiagnosticHandler` to receive structured warnings and errors with overlay and patch locations.
 
 #### Checking applicability without applying
 
@@ -155,7 +157,7 @@ type Patch struct {
 
 | Action | Behaviour |
 |---|---|
-| `merge` | Deep-merges `Data` into the selected node. Map keys are merged recursively; arrays are appended. Errors if the selector matches no existing node. |
+| `merge` | Deep-merges `Data` into selected nodes. Map keys are merged recursively; arrays are appended. |
 | `update` | Fully replaces the selected node with `Data`. |
 | `remove` | Deletes the selected node. When `Data` is a `map[string]any` with `nil` values, only those specific keys are deleted from the node rather than the node itself. An unmatched selector is a successful no-op. |
 
@@ -186,9 +188,13 @@ These reflect what the ORD Overlay spec currently defines and how this library i
 They are documented here so callers do not rely on unspecified behavior.
 
 - **No-match / create-on-missing.** No selector creates a missing target.
-  A `merge` or `update` whose selector matches nothing returns an error.
-  An unmatched `remove` is a successful no-op because the requested absence already holds.
+  A concept-level `merge` or `update` whose selector matches nothing returns an error.
+  A zero-match `JSONPath` patch is a successful no-op and produces a warning, regardless of action, because JSONPath selectors naturally match zero or more elements.
+  An unmatched `remove` is also a successful no-op and produces a warning because the requested absence already holds.
   Do not rely on create-on-missing; a future version may reintroduce it behind a dedicated create action.
+- **Error aggregation.** Every patch is attempted, failed patches do not retain partial mutations, and later patches and overlays continue.
+  `Apply` returns successfully produced partial results and one aggregate error when any error occurred.
+  Consumers choose how to display diagnostics and whether warnings should affect their own process exit status.
 - **The document root cannot be removed.** An omitted-data `remove` using `root` or `JSONPath: "$"` returns an error.
   Use `update` when the complete document must be replaced.
 - **EDMX targets are annotation-only.** For the `edmx` (OData XML) processor, overlays add, replace, and remove annotations on existing structure.

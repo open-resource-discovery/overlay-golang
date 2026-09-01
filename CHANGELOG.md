@@ -10,13 +10,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
-- Selectors now return an error when `merge` or `update` matches no existing target.
+- Unmatched concept-level `merge` and `update` selectors now return an error, while zero-match `JSONPath` patches are warning-producing no-ops.
+- Overlay application now attempts all patches, applies each patch atomically, returns partial results with an aggregate error, and exposes structured diagnostics.
 - Documented idempotent unmatched removal, the prohibition on whole-root removal, valid root removal masks, and annotation-only EDMX behavior.
 
 ### Fixed
 
 - Fixed root removal masks across all JSON-family processors while keeping absent mask fields as no-ops.
-- Fixed unmatched EDMX removal to succeed as an idempotent no-op, consistent with the JSON-family processors.
+- Fixed unmatched EDMX removal to succeed as an idempotent warning-producing no-op, consistent with the JSON-family processors.
 - Fixed CSDL JSON enum-member removal so sibling annotation keys are removed with the member.
 - Fixed EDMX annotation replacement and removal to use term-plus-qualifier identity.
 - Fixed EDMX conversion errors to return through `Apply` instead of panicking.
