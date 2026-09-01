@@ -157,7 +157,7 @@ type Patch struct {
 |---|---|
 | `merge` | Deep-merges `Data` into the selected node. Map keys are merged recursively; arrays are appended. Errors if the selector matches no existing node. |
 | `update` | Fully replaces the selected node with `Data`. |
-| `remove` | Deletes the selected node. When `Data` is a `map[string]any` with `nil` values, only those specific keys are deleted from the node rather than the node itself. Errors if the selector matches no existing node. |
+| `remove` | Deletes the selected node. When `Data` is a `map[string]any` with `nil` values, only those specific keys are deleted from the node rather than the node itself. An unmatched selector is a successful no-op. |
 
 #### `Selector`
 
@@ -186,7 +186,8 @@ These reflect what the ORD Overlay spec currently defines and how this library i
 They are documented here so callers do not rely on unspecified behavior.
 
 - **No-match / create-on-missing.** No selector creates a missing target.
-  A `merge`, `update`, or `remove` whose selector matches nothing returns an error.
+  A `merge` or `update` whose selector matches nothing returns an error.
+  An unmatched `remove` is a successful no-op because the requested absence already holds.
   Do not rely on create-on-missing; a future version may reintroduce it behind a dedicated create action.
 - **The document root cannot be removed.** An omitted-data `remove` using `root` or `JSONPath: "$"` returns an error.
   Use `update` when the complete document must be replaced.
