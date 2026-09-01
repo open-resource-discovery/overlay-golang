@@ -205,6 +205,8 @@ They are documented here so callers do not rely on unspecified behavior.
   They cannot create new structural elements (EntityType, EntitySet, Property, Function/Action, EnumType, ComplexType); those must already exist in the source schema.
   Combined with the note above (no `Root`/`JSONPath` for `edmx`), there is no structural-authoring path.
   New structure belongs in the source CSDL/CDS, not in an overlay.
+  Applying overlays to OData v2 EDMX is unsupported and returns an error.
+  Use an OData v4 EDMX document that describes the model of the OData v2 API as the overlay target.
 - **CSDL JSON enum members** are scalars, so member annotations are written as sibling keys on the enum type (`Read@Core.Description`), not merged into the member value.
 
 These behaviors are specified by the [ORD Overlay specification clarification](https://github.com/open-resource-discovery/specification/pull/171).

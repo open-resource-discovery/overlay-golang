@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Defined and regression-tested the portable JSONPath profile shared with the TypeScript toolkit.
 - Overlay application now attempts all patches, applies each patch atomically, returns partial results with an aggregate error, and exposes structured diagnostics.
 - Documented idempotent unmatched removal, the prohibition on whole-root removal, valid root removal masks, and annotation-only EDMX behavior.
+- OData v2 EDMX targets are rejected with guidance to use an OData v4 EDMX document that describes the OData v2 API.
 
 ### Fixed
 
