@@ -33,12 +33,9 @@ func (self *OverlayProcessor) Apply(od model.OverlayDefinition) (model.ResourceD
 	content, err := utils.SafeCast[map[string]any](clone.Clone(self.content)), error(nil)
 
 	for _, patch := range od.Overlay.Patches {
-		decomposed := []model.Patch{patch}
-		if data, ok := patch.Data.(map[string]any); patch.Action == "remove" && ok && len(data) > 0 {
-			decomposed, err = self.decompose(content, patch)
-			if err != nil {
-				return model.ResourceDefinition{}, err
-			}
+		decomposed, err := self.decompose(content, patch)
+		if err != nil {
+			return model.ResourceDefinition{}, err
 		}
 
 		for _, dpatch := range decomposed {
