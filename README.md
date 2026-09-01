@@ -203,6 +203,7 @@ They are documented here so callers do not rely on unspecified behavior.
   Use `update` when the complete document must be replaced.
 - **EDMX targets are annotation-only.** For the `edmx` (OData XML) processor, overlays add, replace, and remove annotations on existing structure.
   They cannot create new structural elements (EntityType, EntitySet, Property, Function/Action, EnumType, ComplexType); those must already exist in the source schema.
+  A `remove` patch with omitted `Data` preserves the selected structural element and removes its complete annotation set.
   Combined with the note above (no `Root`/`JSONPath` for `edmx`), there is no structural-authoring path.
   New structure belongs in the source CSDL/CDS, not in an overlay.
   Applying overlays to OData v2 EDMX is unsupported and returns an error.

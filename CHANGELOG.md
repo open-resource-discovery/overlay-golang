@@ -23,6 +23,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fixed CSDL JSON enum-member removal so sibling annotation keys are removed with the member.
 - Fixed EDMX annotation replacement and removal to use term-plus-qualifier identity.
 - Fixed EDMX conversion errors to return through `Apply` instead of panicking.
+- Fixed omitted-data EDMX removal so it removes the selected target's complete annotation set while preserving the structural element.
 - Fixed exact-arity EDMX operation signatures, including explicit zero-argument selectors and `FunctionImport` exclusion.
 - Fixed multi-match JSONPath removal so array elements selected by lists, slices, or wildcards are removed exactly once without index shifting.
 
