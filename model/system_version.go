@@ -1,5 +1,11 @@
 package model
 
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
+
 // SystemVersion describes a specific released version of a system type.
 type SystemVersion struct {
 	// Version follows Semantic Versioning 2.0.0 (e.g. "1.2.3", "2024.8.0").
@@ -11,4 +17,8 @@ type SystemVersion struct {
 
 	// CorrelationIDs link this system version to external systems of record.
 	CorrelationIDs []string `json:"correlationIds,omitempty"`
+}
+
+func (self SystemVersion) String() string {
+	return string(utils.First(json.Marshal(self)))
 }

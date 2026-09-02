@@ -1,5 +1,11 @@
 package model
 
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
+
 // Selector identifies the element in the target document to patch.
 // Exactly one field must be set per patch.
 //
@@ -52,4 +58,8 @@ type Selector struct {
 	// ReturnType targets the return type of the operation identified by
 	// Operation. Must be true when set.
 	ReturnType *bool `json:"returnType,omitempty"`
+}
+
+func (self Selector) String() string {
+	return string(utils.First(json.Marshal(self)))
 }

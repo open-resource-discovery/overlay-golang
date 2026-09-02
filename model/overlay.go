@@ -1,6 +1,10 @@
 package model
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
 
 // Overlay is the root object of an ORD Overlay document.
 // It describes an ordered set of patches to apply to a referenced resource
@@ -55,4 +59,8 @@ type Overlay struct {
 	Meta map[string]json.RawMessage `json:"meta,omitempty"`
 
 	Url string
+}
+
+func (self Overlay) String() string {
+	return string(utils.First(json.Marshal(self)))
 }
