@@ -3,7 +3,7 @@ package processor
 import (
 	"strings"
 
-	"github.com/go-errors/errors"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/processor/a2aagentcard"
 	"github.com/open-resource-discovery/overlay-golang/internal/processor/csdl"
 	"github.com/open-resource-discovery/overlay-golang/internal/processor/csn"
@@ -17,10 +17,16 @@ import (
 type OverlayProcessor interface {
 	// Apply applies the given Patch to this resource definition and returns
 	// the patched definition or an error if the patch could not be applied.
-	Apply(overlay model.OverlayDefinition) (model.ResourceDefinition, error)
+	Apply(overlay model.OverlayDefinition) (model.ResourceDefinition, *errors.OverlayError)
 }
 
-func CreateFor(definition model.ResourceDefinition) (OverlayProcessor, error) {
+func MustCreateFor(definition model.ResourceDefinition) OverlayProcessor {
+	defer func() {
+		if err := recover(); err != nil {
+			panic(errors.WrapPrefix(err, "failed to instantiate overlay processor"))
+		}
+	}()
+
 	switch definition.DefinitionType {
 	case "edmx":
 		return edmx.NewOverlayProcessor(definition)
@@ -41,6 +47,6 @@ func CreateFor(definition model.ResourceDefinition) (OverlayProcessor, error) {
 			return yaml.NewOverlayProcessor(definition)
 		}
 
-		return nil, errors.Errorf("unsupported resource definition: %s (%s)", definition.DefinitionType, definition.MediaType)
+		panic(errors.Create(errors.Severity_Error, "unsupported resource definition %s (%s)", definition.DefinitionType, definition.MediaType))
 	}
 }

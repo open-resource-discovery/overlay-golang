@@ -4,10 +4,10 @@ import (
 	"math"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/ohler55/ojg/jp"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
-	xml2json "github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
 
@@ -19,7 +19,7 @@ type PointerImpl struct {
 	namespace string
 }
 
-func ForOperation(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForOperation(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	namespace, name, parameters := resolvers.ParseQualifiedName(selector.Operation)
 
 	for _, candidate := range [][]any{
@@ -44,10 +44,10 @@ func ForOperation(document xml2json.Document, selector *model.Selector) (*Pointe
 		}
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
-func ForEntityType(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForEntityType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	namespace, name, _ := resolvers.ParseQualifiedName(selector.EntityType)
 	expression := expressions.EntityType(namespace, name, selector.PropertyType)
 
@@ -63,10 +63,10 @@ func ForEntityType(document xml2json.Document, selector *model.Selector) (*Point
 		}, nil
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
-func ForComplexType(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForComplexType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	namespace, name, _ := resolvers.ParseQualifiedName(selector.ComplexType)
 	expression := expressions.ComplexType(namespace, name, selector.PropertyType)
 
@@ -82,10 +82,10 @@ func ForComplexType(document xml2json.Document, selector *model.Selector) (*Poin
 		}, nil
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
-func ForEnumType(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForEnumType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	namespace, name, _ := resolvers.ParseQualifiedName(selector.EnumType)
 	expression := expressions.EnumType(namespace, name, selector.PropertyType)
 
@@ -101,10 +101,10 @@ func ForEnumType(document xml2json.Document, selector *model.Selector) (*Pointer
 		}, nil
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
-func ForEntitySet(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForEntitySet(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	namespace, name, _ := resolvers.ParseQualifiedName(selector.EntitySet)
 	index := strings.LastIndex(namespace, ".")
 
@@ -131,10 +131,10 @@ func ForEntitySet(document xml2json.Document, selector *model.Selector) (*Pointe
 		}
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
-func ForNamespace(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForNamespace(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	expression := expressions.Schema(selector.Namespace)
 
 	if pexpression, found, err := xml2json.Pinpoint(document, expression); found && err != nil {
@@ -149,10 +149,10 @@ func ForNamespace(document xml2json.Document, selector *model.Selector) (*Pointe
 		}, nil
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
-func ForOperationParameter(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForOperationParameter(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	namespace, operation, parameters := resolvers.ParseQualifiedName(selector.Operation)
 
 	for _, candidate := range [][]any{
@@ -172,10 +172,10 @@ func ForOperationParameter(document xml2json.Document, selector *model.Selector)
 		}
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
-func ForOperationReturnType(document xml2json.Document, selector *model.Selector) (*PointerImpl, error) {
+func ForOperationReturnType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
 	namespace, operation, parameters := resolvers.ParseQualifiedName(selector.Operation)
 
 	for _, candidate := range [][]any{
@@ -195,7 +195,7 @@ func ForOperationReturnType(document xml2json.Document, selector *model.Selector
 		}
 	}
 
-	return nil, errors.Errorf("no such element: %v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
 }
 
 func (self *PointerImpl) Kind() string {

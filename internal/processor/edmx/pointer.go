@@ -1,8 +1,8 @@
 package edmx
 
 import (
-	"github.com/go-errors/errors"
 	"github.com/ohler55/ojg/jp"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 	"github.com/open-resource-discovery/overlay-golang/internal/processor/edmx/pointers"
 	"github.com/open-resource-discovery/overlay-golang/model"
@@ -16,7 +16,7 @@ type Pointer interface {
 	Annotations() jp.Expr
 }
 
-func NewPointer(content xml2json.Document, selector *model.Selector) (Pointer, error) {
+func NewPointer(content xml2json.Document, selector *model.Selector) (Pointer, *errors.OverlayError) {
 	if len(selector.EnumType) > 0 {
 		return pointers.ForEnumType(content, selector)
 	}
@@ -49,5 +49,5 @@ func NewPointer(content xml2json.Document, selector *model.Selector) (Pointer, e
 		return pointers.ForNamespace(content, selector)
 	}
 
-	return nil, errors.Errorf("unsupported selector: %+v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", selector)
 }

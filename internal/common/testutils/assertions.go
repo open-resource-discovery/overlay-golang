@@ -53,24 +53,31 @@ func AssertResolvesToNode(t *testing.T, doc any, e jp.Expr, wanted any) {
 }
 
 func AssertNoError[T any](value T, err error) T {
-	if err != nil {
+	if rerr := reflect.ValueOf(err); rerr.IsValid() && !rerr.IsZero() {
 		log.Panicf("unexpected error: %v", err)
 	}
-	return value
-}
 
-func AssertPanics(t *testing.T, fn func()) {
-	t.Helper()
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("expected panic, got none")
-		}
-	}()
-	fn()
+	return value
 }
 
 func AssertDeepEquals(t *testing.T, expected any, found any) {
 	if !reflect.DeepEqual(found, expected) {
 		t.Errorf("result does not match expected output\n  got:  %+v\n  want: %+v", found, expected)
+	}
+}
+
+func AssertPanics(t *testing.T, message string) {
+	t.Helper()
+
+	if err := recover(); err == nil {
+		t.Fatal(message)
+	}
+}
+
+func AssertDoesNotPanic(t *testing.T, message string) {
+	t.Helper()
+
+	if err := recover(); err != nil {
+		t.Fatalf(message, err)
 	}
 }

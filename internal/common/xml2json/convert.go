@@ -4,13 +4,14 @@ import (
 	"strings"
 
 	"github.com/antchfx/xmlquery"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 )
 
-func Convert(xml string) (Document, error) {
+func Convert(xml string) (Document, *errors.OverlayError) {
 	parsed, err := xmlquery.Parse(strings.NewReader(xml))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, errors.Severity_Error)
 	}
 
 	return NewDocument(nodes(parsed), notations(parsed), declarations(parsed)), nil

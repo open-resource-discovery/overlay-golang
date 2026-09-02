@@ -18,25 +18,17 @@ import (
 // and returns the parsed result document.
 func applyIntegration(t *testing.T, fixture string, od model.OverlayDefinition) map[string]any {
 	t.Helper()
-	p, err := NewOverlayProcessor(model.ResourceDefinition{
+	p := NewOverlayProcessor(model.ResourceDefinition{
 		Content:   testutils.LoadFixture(fixture),
 		MediaType: fmt.Sprintf("application/%s", strings.Split(filepath.Base(fixture), ".")[1]),
 	})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
 
 	rd, err := p.Apply(od)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
 
-	parsed, err := marshaller.Unmarshal(rd.MediaType, rd.Content)
-	if err != nil {
-		t.Fatalf("Unmarshal result: %v", err)
-	}
-
-	return parsed.(map[string]any)
+	return marshaller.MustUnmarshal(rd.MediaType, rd.Content).(map[string]any)
 }
 
 // loadIntegrationExpected loads and parses an expected-output fixture.
@@ -103,12 +95,12 @@ func TestIntegration_Remove_Root_ReturnsError(t *testing.T) {
 	for _, format := range []string{"json", "yaml"} {
 		for name, selector := range selectors {
 			t.Run(format+"/"+name, func(t *testing.T) {
-				p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{
+				p := NewOverlayProcessor(model.ResourceDefinition{
 					Content:   testutils.LoadFixture(fmt.Sprintf("testdata/petstore.%s", format)),
 					MediaType: fmt.Sprintf("application/%s", format),
-				}))
+				})
 				_, err := p.Apply(testutils.OnePatch("remove", selector, nil))
-				if err == nil || err.Error() != "removing the document root is not supported" {
+				if err == nil || !strings.Contains(err.Error(), "removing the document root is not supported") {
 					t.Fatalf("expected root-removal error, got %v", err)
 				}
 			})

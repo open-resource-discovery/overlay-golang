@@ -68,11 +68,11 @@ func TestPinpoint(t *testing.T) {
 func TestSetNodes(t *testing.T) {
 	t.Run("replaces all nodes with new set", func(t *testing.T) {
 		doc := docWithNodes(elem("old", nil))
-		updated, err := SetNodes(doc, rootExpr(), elem("new", nil))
+		err := SetNodes(doc, rootExpr(), elem("new", nil))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		nodes := updated.Nodes()
+		nodes := doc.Nodes()
 		if len(nodes) != 1 {
 			t.Fatalf("len = %d, want 1", len(nodes))
 		}
@@ -83,11 +83,11 @@ func TestSetNodes(t *testing.T) {
 
 	t.Run("replaces nodes with multiple new nodes", func(t *testing.T) {
 		doc := docWithNodes(elem("old", nil))
-		updated, err := SetNodes(doc, rootExpr(), elem("a", nil), elem("b", nil))
+		err := SetNodes(doc, rootExpr(), elem("a", nil), elem("b", nil))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		nodes := updated.Nodes()
+		nodes := doc.Nodes()
 		if len(nodes) != 2 {
 			t.Fatalf("len = %d, want 2", len(nodes))
 		}
@@ -98,18 +98,18 @@ func TestSetNodes(t *testing.T) {
 
 	t.Run("replaces nodes with empty set", func(t *testing.T) {
 		doc := docWithNodes(elem("old", nil))
-		updated, err := SetNodes(doc, rootExpr())
+		err := SetNodes(doc, rootExpr())
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(updated.Nodes()) != 0 {
-			t.Errorf("len = %d, want 0", len(updated.Nodes()))
+		if len(doc.Nodes()) != 0 {
+			t.Errorf("len = %d, want 0", len(doc.Nodes()))
 		}
 	})
 
 	t.Run("returns original document and error for invalid expression", func(t *testing.T) {
 		doc := docWithNodes(elem("root", nil))
-		_, err := SetNodes(doc, jputils.Expr("$", "nonexistent"))
+		err := SetNodes(doc, jputils.Expr("$", "nonexistent"))
 		if err == nil {
 			t.Error("expected error for invalid expression, got nil")
 		}
@@ -121,11 +121,11 @@ func TestSetNodes(t *testing.T) {
 
 		// Target the nodes array of the nested child element.
 		childExpr := jputils.Expr("$", "nodes", jputils.Frag("[0]"), "nodes", jputils.Frag("[0]"))
-		updated, err := SetNodes(doc, childExpr, elem("new-leaf", nil))
+		err := SetNodes(doc, childExpr, elem("new-leaf", nil))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		root := updated.Nodes()[0]
+		root := doc.Nodes()[0]
 		nested := root.Nodes()[0].Nodes()
 		if len(nested) != 1 || nested[0].Name() != "new-leaf" {
 			t.Errorf("nested nodes = %v", nested)
@@ -138,11 +138,11 @@ func TestSetNodes(t *testing.T) {
 func TestAppendNodes(t *testing.T) {
 	t.Run("appends a node to existing nodes", func(t *testing.T) {
 		doc := docWithNodes(elem("existing", nil))
-		updated, err := AppendNodes(doc, rootExpr(), elem("appended", nil))
+		err := AppendNodes(doc, rootExpr(), elem("appended", nil))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		nodes := updated.Nodes()
+		nodes := doc.Nodes()
 		if len(nodes) != 2 {
 			t.Fatalf("len = %d, want 2", len(nodes))
 		}
@@ -156,11 +156,11 @@ func TestAppendNodes(t *testing.T) {
 
 	t.Run("appends multiple nodes preserving original order", func(t *testing.T) {
 		doc := docWithNodes(elem("first", nil))
-		updated, err := AppendNodes(doc, rootExpr(), elem("second", nil), elem("third", nil))
+		err := AppendNodes(doc, rootExpr(), elem("second", nil), elem("third", nil))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		nodes := updated.Nodes()
+		nodes := doc.Nodes()
 		if len(nodes) != 3 {
 			t.Fatalf("len = %d, want 3", len(nodes))
 		}
@@ -175,11 +175,11 @@ func TestAppendNodes(t *testing.T) {
 
 	t.Run("appends to empty nodes slice", func(t *testing.T) {
 		doc := docWithNodes()
-		updated, err := AppendNodes(doc, rootExpr(), elem("new", nil))
+		err := AppendNodes(doc, rootExpr(), elem("new", nil))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		nodes := updated.Nodes()
+		nodes := doc.Nodes()
 		if len(nodes) != 1 || nodes[0].Name() != "new" {
 			t.Errorf("nodes = %v", nodes)
 		}
@@ -187,7 +187,7 @@ func TestAppendNodes(t *testing.T) {
 
 	t.Run("returns error for invalid expression", func(t *testing.T) {
 		doc := docWithNodes()
-		_, err := AppendNodes(doc, jputils.Expr("$", "nonexistent"), elem("x", nil))
+		err := AppendNodes(doc, jputils.Expr("$", "nonexistent"), elem("x", nil))
 		if err == nil {
 			t.Error("expected error for invalid expression, got nil")
 		}
@@ -199,13 +199,13 @@ func TestAppendNodes(t *testing.T) {
 func TestPruneNodes(t *testing.T) {
 	t.Run("keeps nodes matching predicate", func(t *testing.T) {
 		doc := docWithNodes(elem("keep", nil), elem("remove", nil), elem("keep", nil))
-		updated, err := PruneNodes(doc, rootExpr(), func(n Node) bool {
+		err := PruneNodes(doc, rootExpr(), func(n Node) bool {
 			return n.Name() == "keep"
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		nodes := updated.Nodes()
+		nodes := doc.Nodes()
 		if len(nodes) != 2 {
 			t.Fatalf("len = %d, want 2", len(nodes))
 		}
@@ -218,40 +218,40 @@ func TestPruneNodes(t *testing.T) {
 
 	t.Run("all nodes removed leaves empty nodes slice when deleteIfEmpty is false", func(t *testing.T) {
 		doc := docWithNodes(elem("a", nil), elem("b", nil))
-		updated, err := PruneNodes(doc, rootExpr(), func(n Node) bool {
+		err := PruneNodes(doc, rootExpr(), func(n Node) bool {
 			return false // remove all
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(updated.Nodes()) != 0 {
-			t.Errorf("len = %d, want 0", len(updated.Nodes()))
+		if len(doc.Nodes()) != 0 {
+			t.Errorf("len = %d, want 0", len(doc.Nodes()))
 		}
 	})
 
 	t.Run("predicate keeps all nodes unchanged", func(t *testing.T) {
 		doc := docWithNodes(elem("a", nil), elem("b", nil))
-		updated, err := PruneNodes(doc, rootExpr(), func(n Node) bool {
+		err := PruneNodes(doc, rootExpr(), func(n Node) bool {
 			return true // keep all
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(updated.Nodes()) != 2 {
-			t.Errorf("len = %d, want 2", len(updated.Nodes()))
+		if len(doc.Nodes()) != 2 {
+			t.Errorf("len = %d, want 2", len(doc.Nodes()))
 		}
 	})
 
 	t.Run("prune on empty nodes returns empty slice", func(t *testing.T) {
 		doc := docWithNodes()
-		updated, err := PruneNodes(doc, rootExpr(), func(n Node) bool {
+		err := PruneNodes(doc, rootExpr(), func(n Node) bool {
 			return true
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(updated.Nodes()) != 0 {
-			t.Errorf("len = %d, want 0", len(updated.Nodes()))
+		if len(doc.Nodes()) != 0 {
+			t.Errorf("len = %d, want 0", len(doc.Nodes()))
 		}
 	})
 
@@ -262,34 +262,34 @@ func TestPruneNodes(t *testing.T) {
 		doc := docWithNodes(leaf)
 
 		childExpr := jputils.Expr("$", "nodes", jputils.Frag("[0]"))
-		updated, err := PruneNodes(doc, childExpr, func(n Node) bool {
+		err := PruneNodes(doc, childExpr, func(n Node) bool {
 			return false // prune all children of leaf → empty → deleteIfEmpty removes leaf
 		}, true)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		// The leaf element itself is removed from the document's top-level nodes.
-		if len(updated.Nodes()) != 0 {
-			t.Errorf("top-level nodes len = %d, want 0 (leaf removed)", len(updated.Nodes()))
+		if len(doc.Nodes()) != 0 {
+			t.Errorf("top-level nodes len = %d, want 0 (leaf removed)", len(doc.Nodes()))
 		}
 	})
 
 	t.Run("deleteIfEmpty=false keeps empty nodes slice in place", func(t *testing.T) {
 		doc := docWithNodes(elem("a", nil))
-		updated, err := PruneNodes(doc, rootExpr(), func(n Node) bool {
+		err := PruneNodes(doc, rootExpr(), func(n Node) bool {
 			return false
 		}, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(updated.Nodes()) != 0 {
-			t.Errorf("len = %d, want 0 (empty kept)", len(updated.Nodes()))
+		if len(doc.Nodes()) != 0 {
+			t.Errorf("len = %d, want 0 (empty kept)", len(doc.Nodes()))
 		}
 	})
 
 	t.Run("returns error for invalid expression", func(t *testing.T) {
 		doc := docWithNodes()
-		_, err := PruneNodes(doc, jputils.Expr("$", "nonexistent"), func(n Node) bool { return true })
+		err := PruneNodes(doc, jputils.Expr("$", "nonexistent"), func(n Node) bool { return true })
 		if err == nil {
 			t.Error("expected error for invalid expression, got nil")
 		}

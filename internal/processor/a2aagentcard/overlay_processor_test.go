@@ -58,24 +58,21 @@ func findSkill(skills []any, id string) map[string]any {
 // ---- NewOverlayProcessor ----------------------------------------------------
 
 func TestNewOverlayProcessor_ValidJSON_Succeeds(t *testing.T) {
-	if _, err := NewOverlayProcessor(makeDefinition(`{"name":"agent"}`)); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	defer testutils.AssertDoesNotPanic(t, "unexpected error: %v")
+
+	NewOverlayProcessor(makeDefinition(`{"name":"agent"}`))
 }
 
 func TestNewOverlayProcessor_InvalidJSON_ReturnsError(t *testing.T) {
-	if _, err := NewOverlayProcessor(makeDefinition(`{not valid json`)); err == nil {
-		t.Fatal("expected error for invalid JSON, got nil")
-	}
+	defer testutils.AssertPanics(t, "expected error for invalid JSON")
+
+	NewOverlayProcessor(makeDefinition(`{not valid json`))
 }
 
 func TestNewOverlayProcessor_StoresDefinitionMetadata(t *testing.T) {
 	def := makeDefinition(`{"name":"agent"}`)
 	def.OrdID = "ns:resource:card:v2"
-	p, err := NewOverlayProcessor(def)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	p := NewOverlayProcessor(def)
 	if p.definition.OrdID != "ns:resource:card:v2" {
 		t.Errorf("OrdID not stored: got %q", p.definition.OrdID)
 	}
@@ -84,7 +81,7 @@ func TestNewOverlayProcessor_StoresDefinitionMetadata(t *testing.T) {
 // ---- Apply: output fields ---------------------------------------------------
 
 func TestApply_OutputFields_PurposeAndVisibilitySet(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	od := testutils.NoPatches()
 	od.Purpose = "external"
 	od.Overlay.Visibility = "private"
@@ -109,10 +106,7 @@ func TestApply_OutputFields_OriginalDefinitionFieldsPreserved(t *testing.T) {
 		URL:         "https://example.com/card.json",
 		Perspective: "system-instance",
 	}
-	p, err := NewOverlayProcessor(def)
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
+	p := NewOverlayProcessor(def)
 	od := testutils.NoPatches()
 	od.Overlay.Visibility = "public"
 
@@ -138,7 +132,7 @@ func TestApply_OutputFields_OriginalDefinitionFieldsPreserved(t *testing.T) {
 // ---- Apply: no patches / immutability ---------------------------------------
 
 func TestApply_NoPatch_ContentUnchanged(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.NoPatches())
 	if !reflect.DeepEqual(result, ficaDoc) {
 		t.Error("content changed with no patches applied")
@@ -146,7 +140,7 @@ func TestApply_NoPatch_ContentUnchanged(t *testing.T) {
 }
 
 func TestApply_DoesNotMutateOriginal(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 
 	// First Apply modifies provider.
 	testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
@@ -163,7 +157,7 @@ func TestApply_DoesNotMutateOriginal(t *testing.T) {
 // ---- Apply: merge action ----------------------------------------------------
 
 func TestApply_Merge_JSONPath_AddsKey(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.provider"},
 		map[string]any{"department": "Cloud"}))
@@ -175,7 +169,7 @@ func TestApply_Merge_JSONPath_AddsKey(t *testing.T) {
 }
 
 func TestApply_Merge_JSONPath_PreservesExistingKeys(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.provider"},
 		map[string]any{"department": "Cloud"}))
@@ -187,7 +181,7 @@ func TestApply_Merge_JSONPath_PreservesExistingKeys(t *testing.T) {
 }
 
 func TestApply_Merge_JSONPath_OverwritesExistingKey(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.provider"},
 		map[string]any{"organization": "ACME"}))
@@ -199,7 +193,7 @@ func TestApply_Merge_JSONPath_OverwritesExistingKey(t *testing.T) {
 }
 
 func TestApply_Merge_Operation_AddsKey(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Operation: "dispute-case-resolution"},
 		map[string]any{"x-custom": "overlay-value"}))
@@ -214,7 +208,7 @@ func TestApply_Merge_Operation_AddsKey(t *testing.T) {
 }
 
 func TestApply_Merge_Operation_PreservesOriginalSkillFields(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Operation: "dispute-case-resolution"},
 		map[string]any{"x-custom": "overlay-value"}))
@@ -226,7 +220,7 @@ func TestApply_Merge_Operation_PreservesOriginalSkillFields(t *testing.T) {
 }
 
 func TestApply_Merge_Operation_DoesNotAffectOtherSkills(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Operation: "dispute-case-resolution"},
 		map[string]any{"x-custom": "overlay-value"}))
@@ -246,7 +240,7 @@ func TestApply_Merge_Operation_DoesNotAffectOtherSkills(t *testing.T) {
 }
 
 func TestApply_Merge_Root_AddsTopLevelKey(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Root: utils.Ptr(true)},
 		map[string]any{"overlay": "applied"}))
@@ -262,7 +256,7 @@ func TestApply_Merge_Root_AddsTopLevelKey(t *testing.T) {
 
 func TestApply_Merge_Operation_AppendsArrayField(t *testing.T) {
 	// DeepMerge appends slices: original tags are preserved and new-tag is added.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Operation: "invoice-recalculation"},
 		map[string]any{"tags": []any{"new-tag"}}))
@@ -286,7 +280,7 @@ func TestApply_Merge_Operation_AppendsArrayField(t *testing.T) {
 // ---- Apply: update action ---------------------------------------------------
 
 func TestApply_Update_JSONPath_ReplacesNodeEntirely(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{JSONPath: "$.provider"},
 		map[string]any{"organization": "ACME Corp"}))
@@ -302,7 +296,7 @@ func TestApply_Update_JSONPath_ReplacesNodeEntirely(t *testing.T) {
 }
 
 func TestApply_Update_Operation_ReplacesSkillEntirely(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{Operation: "credit-memo-processing"},
 		map[string]any{"id": "credit-memo-processing", "name": "Replaced"}))
@@ -323,7 +317,7 @@ func TestApply_Update_Operation_ReplacesSkillEntirely(t *testing.T) {
 }
 
 func TestApply_Update_Root_ReplacesEntireDocument(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{Root: utils.Ptr(true)},
 		map[string]any{"name": "replacement"}))
@@ -341,7 +335,7 @@ func TestApply_Update_Root_ReplacesEntireDocument(t *testing.T) {
 func TestApply_Remove_JSONPath_RemovesField(t *testing.T) {
 	// Remove via a nil-keyed Data entry: PatchDecomposer produces a leaf patch
 	// targeting the specific key, which is then deleted.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
 		model.Selector{JSONPath: "$"},
 		map[string]any{"provider": nil}))
@@ -357,7 +351,7 @@ func TestApply_Remove_JSONPath_RemovesField(t *testing.T) {
 func TestApply_Remove_NilData_RemovesTargetedNode(t *testing.T) {
 	// nil Data is now fast-pathed by Decompose (returns the patch unchanged).
 	// apply then resolves the selector and removes the targeted node entirely.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
 		model.Selector{JSONPath: "$.provider"}, nil))
 
@@ -377,7 +371,7 @@ func TestApply_Remove_Operation_RemovesSkill(t *testing.T) {
 	// The simplest working pattern is to target the skill's own fields via
 	// a nil-keyed entry at the parent level.
 	// Here we verify the nil-key remove pattern works for a nested path.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
 		model.Selector{JSONPath: "$"},
 		map[string]any{"documentationUrl": nil}))
@@ -394,7 +388,7 @@ func TestApply_Remove_Operation_RemovesSkill(t *testing.T) {
 func TestApply_Remove_OperationSelector_NilData_RemovesSkill(t *testing.T) {
 	// nil Data is now fast-pathed by Decompose (returns the patch unchanged).
 	// apply resolves the Operation selector and removes the targeted skill element.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
 		model.Selector{Operation: "dispute-case-verification"}, nil))
 
@@ -411,7 +405,7 @@ func TestApply_Remove_OperationSelector_NilData_RemovesSkill(t *testing.T) {
 func TestApply_Remove_WithNilDataKey_DeletesLeafViaDecomposer(t *testing.T) {
 	// A nil data value causes PatchDecomposer to produce a leaf patch targeting
 	// the specific key — the remove then deletes only that key.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
 		model.Selector{JSONPath: "$"},
 		map[string]any{"name": nil}))
@@ -428,7 +422,7 @@ func TestApply_Remove_WithNilDataKey_DeletesLeafViaDecomposer(t *testing.T) {
 // ---- Apply: patch ordering --------------------------------------------------
 
 func TestApply_PatchesAppliedInOrder(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	od := model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "merge", Selector: &model.Selector{JSONPath: "$.provider"}, Data: map[string]any{"organization": "first"}},
@@ -446,7 +440,7 @@ func TestApply_PatchesAppliedInOrder(t *testing.T) {
 func TestApply_MixedActions_AppliedInOrder(t *testing.T) {
 	// merge adds a key; remove deletes the same key; merge sets a new value.
 	// The remove must target a key that exists in the original doc.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	od := model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "merge", Selector: &model.Selector{JSONPath: "$.provider"}, Data: map[string]any{"organization": "step-1"}},
@@ -465,7 +459,7 @@ func TestApply_MultiplePatches_StopsOnFirstError(t *testing.T) {
 	// The first patch uses an unknown action with a nil-keyed entry so that
 	// Decompose produces a patch that reaches apply's default error branch.
 	// The second patch must not be applied.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	od := model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "badaction", Selector: &model.Selector{JSONPath: "$"}, Data: map[string]any{"name": nil}},
@@ -491,7 +485,7 @@ func TestApply_UnknownAction_ReturnsError(t *testing.T) {
 	// when Decompose produces at least one patch for it. Decompose fast-paths
 	// merge/update; for any other action it walks Data and produces patches only
 	// for nil-keyed entries. So we use a nil-keyed entry to force a patch through.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	_, err := p.Apply(testutils.OnePatch("replace",
 		model.Selector{JSONPath: "$"},
 		map[string]any{"name": nil}))
@@ -503,7 +497,7 @@ func TestApply_UnknownAction_ReturnsError(t *testing.T) {
 func TestApply_UnknownAction_WithNonNilScalarData_IsNoOp(t *testing.T) {
 	// Non-nil scalar values in Data are skipped by Decompose → zero patches →
 	// no error, no change. This documents the current behavior.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("replace",
 		model.Selector{JSONPath: "$.capabilities"},
 		map[string]any{"x": 1}))
@@ -513,7 +507,7 @@ func TestApply_UnknownAction_WithNonNilScalarData_IsNoOp(t *testing.T) {
 }
 
 func TestApply_InvalidJSONPath_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	_, err := p.Apply(testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$$[invalid"},
 		map[string]any{"x": 1}))
@@ -523,7 +517,7 @@ func TestApply_InvalidJSONPath_ReturnsError(t *testing.T) {
 }
 
 func TestApply_UnsupportedSelector_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	_, err := p.Apply(testutils.OnePatch("merge", model.Selector{}, map[string]any{"x": 1}))
 	if err == nil {
 		t.Fatal("expected error for empty selector, got nil")
@@ -538,7 +532,7 @@ func TestApply_MergeSelector_NotFound_ReturnsError(t *testing.T) {
 	// Note: JSONPath selectors no longer validate existence at resolve time —
 	// a non-existent JSONPath is a valid expression that simply matches nothing,
 	// so merge/update via JSONPath is a silent no-op, not an error.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	_, err := p.Apply(testutils.OnePatch("merge", model.Selector{Operation: "nonexistent-skill"}, map[string]any{"x": 1}))
 	if err == nil {
 		t.Error("expected error for operation selector that matches nothing, got nil")
@@ -547,7 +541,7 @@ func TestApply_MergeSelector_NotFound_ReturnsError(t *testing.T) {
 
 func TestApply_Merge_JSONPath_NotFound_CreatesNode(t *testing.T) {
 	// When a JSONPath selector points to a non-existent node, merge now creates it.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.nonexistent"},
 		map[string]any{"x": "created"}))
@@ -566,7 +560,7 @@ func TestApply_Merge_JSONPath_NotFound_CreatesNode(t *testing.T) {
 
 func TestApply_Update_JSONPath_NotFound_CreatesNode(t *testing.T) {
 	// When a JSONPath selector points to a non-existent node, update now creates it.
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent)))
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{JSONPath: "$.newnode"},
 		map[string]any{"key": "value"}))
@@ -586,7 +580,7 @@ func TestApply_Update_JSONPath_NotFound_CreatesNode(t *testing.T) {
 // ---- Apply: root selector ---------------------------------------------------
 
 func TestApply_RootSelector_Merge_AddsTopLevelKey(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(`{"name":"test","version":"1.0"}`)))
+	p := NewOverlayProcessor(makeDefinition(`{"name":"test","version":"1.0"}`))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Root: utils.Ptr(true)},
 		map[string]any{"overlay": "applied"}))
@@ -600,7 +594,7 @@ func TestApply_RootSelector_Merge_AddsTopLevelKey(t *testing.T) {
 }
 
 func TestApply_RootSelector_Update_ReplacesDocument(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(`{"name":"test","version":"1.0"}`)))
+	p := NewOverlayProcessor(makeDefinition(`{"name":"test","version":"1.0"}`))
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{Root: utils.Ptr(true)},
 		map[string]any{"name": "replaced"}))
@@ -614,7 +608,7 @@ func TestApply_RootSelector_Update_ReplacesDocument(t *testing.T) {
 }
 
 func TestApply_RootSelector_Remove_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(`{"name":"test","version":"1.0"}`)))
+	p := NewOverlayProcessor(makeDefinition(`{"name":"test","version":"1.0"}`))
 	_, err := p.Apply(testutils.OnePatch("remove", model.Selector{Root: utils.Ptr(true)}, nil))
 	if err == nil {
 		t.Fatal("expected root remove to return an error")
@@ -624,7 +618,7 @@ func TestApply_RootSelector_Remove_ReturnsError(t *testing.T) {
 // ---- resolve ----------------------------------------------------------------
 
 func TestExpressions_Resolve_RootSelector_ReturnsRootExpression(t *testing.T) {
-	e, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{Root: utils.Ptr(true)})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Root: utils.Ptr(true)})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -632,7 +626,7 @@ func TestExpressions_Resolve_RootSelector_ReturnsRootExpression(t *testing.T) {
 }
 
 func TestExpressions_Resolve_JSONPath_Found(t *testing.T) {
-	e, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{JSONPath: "$.provider"})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{JSONPath: "$.provider"})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -641,7 +635,7 @@ func TestExpressions_Resolve_JSONPath_Found(t *testing.T) {
 }
 
 func TestExpressions_Resolve_Operation_Found(t *testing.T) {
-	e, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{Operation: "invoice-recalculation"})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Operation: "invoice-recalculation"})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -652,7 +646,7 @@ func TestExpressions_Resolve_Operation_Found(t *testing.T) {
 func TestExpressions_Resolve_JSONPath_NotFound_Succeeds(t *testing.T) {
 	// JSONPath selectors no longer validate existence — a path that matches
 	// nothing is returned as a valid parsed expression without error.
-	e, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{JSONPath: "$.nonexistent"})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{JSONPath: "$.nonexistent"})
 	if err != nil {
 		t.Fatalf("expected no error for non-existent JSONPath, got: %v", err)
 	}
@@ -660,14 +654,14 @@ func TestExpressions_Resolve_JSONPath_NotFound_Succeeds(t *testing.T) {
 }
 
 func TestExpressions_Resolve_JSONPath_InvalidSyntax_ReturnsError(t *testing.T) {
-	_, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{JSONPath: "$$[invalid"})
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{JSONPath: "$$[invalid"})
 	if err == nil {
 		t.Fatal("expected error for invalid JSONPath syntax, got nil")
 	}
 }
 
 func TestExpressions_Resolve_Operation_NotFound_ReturnsError(t *testing.T) {
-	_, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{Operation: "nonexistent-skill"})
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Operation: "nonexistent-skill"})
 	if err == nil {
 		t.Fatal("expected error for operation that matches no skill, got nil")
 	}
@@ -675,7 +669,7 @@ func TestExpressions_Resolve_Operation_NotFound_ReturnsError(t *testing.T) {
 
 func TestExpressions_Resolve_EmptySelector_ReturnsError(t *testing.T) {
 	// An empty Selector has neither Root, JSONPath, nor Operation — must error.
-	_, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{})
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{})
 	if err == nil {
 		t.Fatal("expected error for unsupported (empty) selector, got nil")
 	}
@@ -684,7 +678,7 @@ func TestExpressions_Resolve_EmptySelector_ReturnsError(t *testing.T) {
 func TestExpressions_Resolve_RootFalsePtrIsNotRoot(t *testing.T) {
 	// Root: ptr(false) must NOT match the Root branch — it falls through to
 	// JSONPath and Operation (both empty), which returns an error.
-	_, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{Root: utils.Ptr(false)})
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Root: utils.Ptr(false)})
 	if err == nil {
 		t.Fatal("expected error when Root pointer is false, got nil")
 	}
@@ -692,7 +686,7 @@ func TestExpressions_Resolve_RootFalsePtrIsNotRoot(t *testing.T) {
 
 func TestExpressions_Resolve_JSONPathTakesPrecedenceOverOperation(t *testing.T) {
 	// When both JSONPath and Operation are set, JSONPath is checked first.
-	e, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).resolve(ficaDoc, &model.Selector{
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{
 		JSONPath:  "$.provider",
 		Operation: "dispute-case-resolution",
 	})
@@ -716,7 +710,7 @@ func TestDecompose_NilData_ReturnsOriginalPatchUnchanged(t *testing.T) {
 		Selector:    &model.Selector{JSONPath: "$.provider"},
 		Data:        nil,
 	}
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, patch)
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, patch)
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
@@ -732,7 +726,7 @@ func TestDecompose_MergeAction_ReturnsOriginalPatchUnchanged(t *testing.T) {
 		Selector:    &model.Selector{JSONPath: "$.capabilities"},
 		Data:        map[string]any{"streaming": true},
 	}
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, patch)
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, patch)
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
@@ -748,7 +742,7 @@ func TestDecompose_UpdateAction_ReturnsOriginalPatchUnchanged(t *testing.T) {
 		Selector:    &model.Selector{JSONPath: "$.provider"},
 		Data:        map[string]any{"organization": "ACME"},
 	}
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, patch)
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, patch)
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
@@ -764,7 +758,7 @@ func TestDecompose_MergeAction_WithRootSelector_ReturnsOriginalPatchUnchanged(t 
 		Selector:    &model.Selector{Root: utils.Ptr(true)},
 		Data:        map[string]any{"overlay": "applied"},
 	}
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, patch)
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, patch)
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
@@ -780,7 +774,7 @@ func TestDecompose_MergeAction_EmptyData_ReturnsOriginalPatchUnchanged(t *testin
 		Selector:    &model.Selector{JSONPath: "$.capabilities"},
 		Data:        map[string]any{},
 	}
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, patch)
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, patch)
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
@@ -796,7 +790,7 @@ func TestDecompose_MergeAction_WithOperationSelector_ReturnsOriginalPatchUnchang
 		Selector:    &model.Selector{Operation: "dispute-case-resolution"},
 		Data:        map[string]any{"x-custom": "value"},
 	}
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, patch)
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, patch)
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
@@ -806,7 +800,7 @@ func TestDecompose_MergeAction_WithOperationSelector_ReturnsOriginalPatchUnchang
 // ---- remove: empty / scalar-only data ---------------------------------------
 
 func TestDecompose_RemoveAction_EmptyData_ReturnsEmptySlice(t *testing.T) {
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -822,7 +816,7 @@ func TestDecompose_RemoveAction_EmptyData_ReturnsEmptySlice(t *testing.T) {
 
 func TestDecompose_RemoveAction_ScalarValue_IsSkipped(t *testing.T) {
 	// Non-nil, non-map values are silently ignored — no patches produced.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -837,7 +831,7 @@ func TestDecompose_RemoveAction_ScalarValue_IsSkipped(t *testing.T) {
 }
 
 func TestDecompose_RemoveAction_BoolValue_IsSkipped(t *testing.T) {
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -856,7 +850,7 @@ func TestDecompose_RemoveAction_BoolValue_IsSkipped(t *testing.T) {
 func TestDecompose_RemoveAction_NilValue_ProducesLeafPatch(t *testing.T) {
 	// A nil data value produces a leaf patch whose selector is the JSONPath
 	// child of the input selector.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -880,7 +874,7 @@ func TestDecompose_RemoveAction_NilValue_ProducesLeafPatch(t *testing.T) {
 }
 
 func TestDecompose_RemoveAction_MultipleNilValues_ProducesOneLeafPatchPerKey(t *testing.T) {
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -913,7 +907,7 @@ func TestDecompose_RemoveAction_MultipleNilValues_ProducesOneLeafPatchPerKey(t *
 
 func TestDecompose_RemoveAction_MixedNilAndScalar_OnlyNilProducesPatches(t *testing.T) {
 	// A nil value produces a leaf patch; a non-nil scalar is silently skipped.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -943,7 +937,7 @@ func TestDecompose_RemoveAction_MixedNilAndScalar_OnlyNilProducesPatches(t *test
 
 func TestDecompose_RemoveAction_MapValue_RecursesAndProducesLeafPatch(t *testing.T) {
 	// A map value triggers recursive decomposition down to the nil leaf.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -980,7 +974,7 @@ func TestDecompose_RemoveAction_DeeplyNestedMapValue_ProducesLeafAtCorrectPath(t
 			},
 		},
 	}
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(doc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(doc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -1013,7 +1007,7 @@ func TestDecompose_RemoveAction_DeeplyNestedMapValue_ProducesLeafAtCorrectPath(t
 
 func TestDecompose_RemoveAction_PatchFields_PreservedInProducedPatches(t *testing.T) {
 	// Action, Description, Tags, and Meta must be copied verbatim.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -1041,7 +1035,7 @@ func TestDecompose_RemoveAction_PatchFields_PreservedInProducedPatches(t *testin
 func TestDecompose_RemoveAction_OperationSelector_NilValue_ProducesLeafPatch(t *testing.T) {
 	// Operation selector resolves to a skills array element via JSONPath filter.
 	// The child path uses the ojg bracket notation for the key.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "remove",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -1073,7 +1067,7 @@ func TestDecompose_RemoveAction_OperationSelector_NilValue_ProducesLeafPatch(t *
 func TestDecompose_UnknownAction_WithNilValue_DecomposesLikeRemove(t *testing.T) {
 	// Only merge/update are fast-pathed. Any other action follows the recursive
 	// data-walk path and produces leaf patches for nil values.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:      "upsert",
 		Description: "test-description",
 		Tags:        []string{"tag-a", "tag-b"},
@@ -1099,7 +1093,7 @@ func TestDecompose_UnknownAction_WithNilValue_DecomposesLikeRemove(t *testing.T)
 // ---- error paths ------------------------------------------------------------
 
 func TestDecompose_RemoveAction_InvalidJSONPath_ReturnsError(t *testing.T) {
-	_, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:   "remove",
 		Selector: &model.Selector{JSONPath: "$$[invalid"},
 		Data:     map[string]any{"name": nil},
@@ -1113,7 +1107,7 @@ func TestDecompose_RemoveAction_SelectorNotFound_IsNoOp(t *testing.T) {
 	// JSONPath selectors no longer validate existence at resolve time.
 	// A non-existent path is a valid expression; decompose produces a leaf patch
 	// whose remove will simply find no locations and do nothing.
-	result, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:   "remove",
 		Selector: &model.Selector{JSONPath: "$.nonexistent"},
 		Data:     map[string]any{"someKey": nil},
@@ -1128,7 +1122,7 @@ func TestDecompose_RemoveAction_SelectorNotFound_IsNoOp(t *testing.T) {
 }
 
 func TestDecompose_RemoveAction_OperationNotFound_ReturnsError(t *testing.T) {
-	_, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:   "remove",
 		Selector: &model.Selector{Operation: "nonexistent-skill"},
 		Data:     map[string]any{"description": nil},
@@ -1140,7 +1134,7 @@ func TestDecompose_RemoveAction_OperationNotFound_ReturnsError(t *testing.T) {
 
 func TestDecompose_RemoveAction_UnsupportedSelector_ReturnsError(t *testing.T) {
 	// An empty Selector (no Root, JSONPath, or Operation) is unsupported.
-	_, err := testutils.AssertNoError(NewOverlayProcessor(makeDefinition(ficaContent))).decompose(ficaDoc, model.Patch{
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:   "remove",
 		Selector: &model.Selector{},
 		Data:     map[string]any{"name": nil},

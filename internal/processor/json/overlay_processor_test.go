@@ -19,14 +19,11 @@ var mcpDoc = testutils.UnmarshalFixture[map[string]any]("testdata/mcp_server_car
 // newProcessor creates an OverlayProcessor from a raw JSON string.
 func newProcessor(t *testing.T, content string) *OverlayProcessor {
 	t.Helper()
-	p, err := NewOverlayProcessor(model.ResourceDefinition{
+
+	return NewOverlayProcessor(model.ResourceDefinition{
 		Content:   content,
 		MediaType: "application/json",
 	})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
-	return p
 }
 
 // mcpContent is the MCP Server Card fixture serialised as a string for use
@@ -42,21 +39,21 @@ var mcpContent = func() string {
 // ---- NewOverlayProcessor ----------------------------------------------------
 
 func TestNewOverlayProcessor_ValidJSON_Succeeds(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{
+	defer testutils.AssertDoesNotPanic(t, "unexpected error: %v")
+
+	NewOverlayProcessor(model.ResourceDefinition{
 		Content:   `{"name":"test"}`,
 		MediaType: "application/json",
-	}); err != nil {
-		t.Fatalf("expected no error, got: %v", err)
-	}
+	})
 }
 
 func TestNewOverlayProcessor_InvalidJSON_ReturnsError(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{
+	defer testutils.AssertPanics(t, "expected panic for invalid JSON")
+
+	NewOverlayProcessor(model.ResourceDefinition{
 		Content:   `{not valid json`,
 		MediaType: "application/json",
-	}); err == nil {
-		t.Fatal("expected error for invalid JSON, got nil")
-	}
+	})
 }
 
 // ---- Apply: output fields ---------------------------------------------------
@@ -82,16 +79,13 @@ func TestApply_OutputFields_PurposeAndVisibilitySet(t *testing.T) {
 }
 
 func TestApply_OutputFields_OriginalDefinitionFieldsPreserved(t *testing.T) {
-	p, err := NewOverlayProcessor(model.ResourceDefinition{
+	p := NewOverlayProcessor(model.ResourceDefinition{
 		Content:    mcpContent,
 		MediaType:  "application/json",
 		OrdID:      "sap.sm:resourceDefinition:mcp-server-card:v1",
 		URL:        "https://example.com/mcp-server-card.json",
 		Visibility: "internal",
 	})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
 	rd, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Visibility: "public", Patches: []model.Patch{}},
 	})

@@ -28,10 +28,7 @@ func normalizeXML(t *testing.T, raw string) string {
 // and returns the normalized result XML string.
 func applyIntegration(t *testing.T, od model.OverlayDefinition) string {
 	t.Helper()
-	p, err := NewOverlayProcessor(model.ResourceDefinition{Content: integrationInput})
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: integrationInput})
 	result, err := p.Apply(od)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)

@@ -30,11 +30,8 @@ func makeDefinition(content string) model.ResourceDefinition {
 // mustNewProcessor creates an OverlayProcessor from a raw JSON string.
 func mustNewProcessor(t *testing.T, content string) *OverlayProcessor {
 	t.Helper()
-	p, err := NewOverlayProcessor(makeDefinition(content))
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
-	return p
+
+	return NewOverlayProcessor(makeDefinition(content))
 }
 
 // definitions returns the "definitions" map from a result document.
@@ -76,24 +73,21 @@ func element(t *testing.T, doc map[string]any, entityName, elemName string) map[
 // ---- NewOverlayProcessor ----------------------------------------------------
 
 func TestNewOverlayProcessor_ValidJSON_Succeeds(t *testing.T) {
-	if _, err := NewOverlayProcessor(makeDefinition(`{"definitions":{}}`)); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	defer testutils.AssertDoesNotPanic(t, "unexpected error: %v")
+
+	NewOverlayProcessor(makeDefinition(`{"definitions":{}}`))
 }
 
 func TestNewOverlayProcessor_InvalidJSON_ReturnsError(t *testing.T) {
-	if _, err := NewOverlayProcessor(makeDefinition(`{not valid json`)); err == nil {
-		t.Fatal("expected error for invalid JSON, got nil")
-	}
+	defer testutils.AssertPanics(t, "expected panic for invalid JSON")
+
+	NewOverlayProcessor(makeDefinition(`{not valid json`))
 }
 
 func TestNewOverlayProcessor_StoresDefinitionMetadata(t *testing.T) {
 	def := makeDefinition(`{"definitions":{}}`)
 	def.OrdID = "ns:resource:csn:v2"
-	p, err := NewOverlayProcessor(def)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	p := NewOverlayProcessor(def)
 	if p.definition.OrdID != "ns:resource:csn:v2" {
 		t.Errorf("OrdID not stored: got %q", p.definition.OrdID)
 	}
@@ -127,10 +121,7 @@ func TestApply_OutputFields_OriginalDefinitionFieldsPreserved(t *testing.T) {
 		URL:         "https://example.com/csn.json",
 		Perspective: "system-instance",
 	}
-	p, err := NewOverlayProcessor(def)
-	if err != nil {
-		t.Fatalf("NewOverlayProcessor: %v", err)
-	}
+	p := NewOverlayProcessor(def)
 	od := testutils.NoPatches()
 	od.Overlay.Visibility = "public"
 

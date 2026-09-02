@@ -7,11 +7,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/ohler55/ojg/jp"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"golang.org/x/exp/constraints"
 )
+
+func Parse(value string) (jp.Expr, *errors.OverlayError) {
+	result, err := jp.ParseString(value)
+
+	return result, errors.Wrap(err, errors.Severity_Warning)
+}
 
 func IsRoot(expression jp.Expr) bool {
 	return len(expression) == 1 && expression[0] == jp.Root('$')
@@ -90,7 +96,7 @@ func And(first *jp.Equation, second *jp.Equation, rest ...*jp.Equation) *jp.Equa
 	return utils.Reduce(rest, jp.And(first, second), jp.And)
 }
 
-func Pinpoint(document any, expression jp.Expr) (jp.Expr, bool, error) {
+func Pinpoint(document any, expression jp.Expr) (jp.Expr, bool, *errors.OverlayError) {
 	located := expression.Locate(document, 2)
 
 	if IsRoot(expression) {
@@ -98,11 +104,11 @@ func Pinpoint(document any, expression jp.Expr) (jp.Expr, bool, error) {
 	}
 
 	if len(located) == 0 {
-		return nil, false, errors.Errorf("no such element: %s", expression.String())
+		return nil, false, errors.Create(errors.Severity_Warning, "no such element: %s", expression.String())
 	}
 
 	if len(located) > 1 {
-		return nil, true, errors.Errorf("ambiguous expression: %s", expression.String())
+		return nil, true, errors.Create(errors.Severity_Warning, "ambiguous expression: %s", expression.String())
 	}
 
 	return located[0], true, nil

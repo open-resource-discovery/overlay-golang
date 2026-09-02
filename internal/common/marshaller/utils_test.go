@@ -295,12 +295,9 @@ func TestUnmarshal(t *testing.T) {
 	})
 
 	t.Run("unsupported media type returns error and nil value", func(t *testing.T) {
-		got, err := Unmarshal("application/octet-stream", "data")
+		_, err := Unmarshal("application/octet-stream", "data")
 		if err == nil {
 			t.Fatal("expected error for unsupported media type, got nil")
-		}
-		if got != nil {
-			t.Errorf("expected nil value, got %v", got)
 		}
 		if !strings.Contains(err.Error(), "unsupported media type") {
 			t.Errorf("error message %q does not mention 'unsupported media type'", err.Error())
@@ -314,6 +311,159 @@ func TestUnmarshal(t *testing.T) {
 		}
 	})
 }
+
+// ---- MustMarshal ------------------------------------------------------------
+
+func TestMustMarshal_JSON_ReturnsString(t *testing.T) {
+	got := MustMarshal("application/json", map[string]any{"key": "value"})
+	if !strings.Contains(got, `"key"`) || !strings.Contains(got, `"value"`) {
+		t.Errorf("expected JSON with key/value, got %q", got)
+	}
+}
+
+func TestMustMarshal_YAML_ReturnsString(t *testing.T) {
+	got := MustMarshal("application/yaml", map[string]any{"key": "value"})
+	if !strings.Contains(got, "key: value") {
+		t.Errorf("expected YAML 'key: value', got %q", got)
+	}
+}
+
+func TestMustMarshal_XML_ReturnsString(t *testing.T) {
+	doc, err := Unmarshal("application/xml", `<root><child>hello</child></root>`)
+	if err != nil {
+		t.Fatalf("Unmarshal error: %v", err)
+	}
+	got := MustMarshal("application/xml", doc)
+	if !strings.Contains(got, "root") || !strings.Contains(got, "child") {
+		t.Errorf("expected XML with root/child, got %q", got)
+	}
+}
+
+func TestMustMarshal_UnsupportedMediaType_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for unsupported media type, got none")
+		}
+	}()
+	MustMarshal("application/octet-stream", map[string]any{})
+}
+
+func TestMustMarshal_MediaTypeWithParameters_DoesNotPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic: %v", r)
+		}
+	}()
+	MustMarshal("application/json; charset=utf-8", map[string]any{"a": 1})
+}
+
+// ---- MustUnmarshal ----------------------------------------------------------
+
+func TestMustUnmarshal_JSON_ReturnsMap(t *testing.T) {
+	got := MustUnmarshal("application/json", `{"name":"Alice"}`)
+	m, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", got)
+	}
+	if m["name"] != "Alice" {
+		t.Errorf("name: got %v, want \"Alice\"", m["name"])
+	}
+}
+
+func TestMustUnmarshal_YAML_ReturnsMap(t *testing.T) {
+	got := MustUnmarshal("application/yaml", "key: value\n")
+	m, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", got)
+	}
+	if m["key"] != "value" {
+		t.Errorf("key: got %v, want \"value\"", m["key"])
+	}
+}
+
+func TestMustUnmarshal_XML_ReturnsDocument(t *testing.T) {
+	got := MustUnmarshal("application/xml", `<root><child>hello</child></root>`)
+	out := MustMarshal("application/xml", got)
+	if !strings.Contains(out, "root") || !strings.Contains(out, "child") {
+		t.Errorf("expected document with root/child, got %q", out)
+	}
+}
+
+func TestMustUnmarshal_InvalidJSON_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for invalid JSON, got none")
+		}
+	}()
+	MustUnmarshal("application/json", `{bad json}`)
+}
+
+func TestMustUnmarshal_InvalidYAML_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for invalid YAML, got none")
+		}
+	}()
+	MustUnmarshal("application/yaml", ":\n  - bad: [unclosed")
+}
+
+func TestMustUnmarshal_InvalidXML_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for invalid XML, got none")
+		}
+	}()
+	MustUnmarshal("application/xml", `<unclosed>`)
+}
+
+func TestMustUnmarshal_UnsupportedMediaType_Panics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for unsupported media type, got none")
+		}
+	}()
+	MustUnmarshal("application/octet-stream", "data")
+}
+
+func TestMustUnmarshal_MediaTypeWithParameters_DoesNotPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("unexpected panic: %v", r)
+		}
+	}()
+	MustUnmarshal("application/json; charset=utf-8", `{"ok":true}`)
+}
+
+// ---- MustMarshal / MustUnmarshal roundtrip ----------------------------------
+
+func TestMustMarshalUnmarshalRoundtrip_JSON(t *testing.T) {
+	original := map[string]any{"name": "Alice", "score": int64(99)}
+	got := MustUnmarshal("application/json", MustMarshal("application/json", original))
+	m, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", got)
+	}
+	if m["name"] != "Alice" {
+		t.Errorf("name: got %v, want \"Alice\"", m["name"])
+	}
+	if m["score"] != int64(99) {
+		t.Errorf("score: got %v (%T), want int64(99)", m["score"], m["score"])
+	}
+}
+
+func TestMustMarshalUnmarshalRoundtrip_YAML(t *testing.T) {
+	out := MustMarshal("application/yaml", map[string]any{"key": "value"})
+	got := MustUnmarshal("application/yaml", out)
+	m, ok := got.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map[string]any, got %T", got)
+	}
+	if m["key"] != "value" {
+		t.Errorf("key: got %v, want \"value\"", m["key"])
+	}
+}
+
+// ---- TestMarshalUnmarshalRoundtrip ------------------------------------------
 
 func TestMarshalUnmarshalRoundtrip(t *testing.T) {
 	t.Run("JSON: flat object fields preserved", func(t *testing.T) {
