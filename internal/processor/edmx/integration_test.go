@@ -346,7 +346,33 @@ func TestIntegration_Update_Operation_ReplacesAnnotationOnFunction(t *testing.T)
 	)
 }
 
-// ---- multi-patch: realistic overlay sequence --------------------------------
+// ---- remove: nil data (remove all annotations) ------------------------------
+
+// TestIntegration_Remove_NilData_EntityType_RemovesAllAnnotations verifies that a
+// remove patch with nil data strips every annotation from the target's Annotations block.
+func TestIntegration_Remove_NilData_EntityType_RemovesAllAnnotations(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		loadIntegrationExpected(t, "remove_nil_entitytype_expected.xml"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "CatalogService.Books"},
+			nil,
+		)),
+	)
+}
+
+// TestIntegration_Remove_NilData_EntityType_NoExisting_IsNoOp verifies that a
+// remove patch with nil data is a no-op when the target has no Annotations block.
+func TestIntegration_Remove_NilData_EntityType_NoExisting_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		loadIntegrationExpected(t, "remove_nil_noexisting_entitytype_expected.xml"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "CatalogService.Books_texts"},
+			nil,
+		)),
+	)
+}
 
 // TestIntegration_MultiPatch_RealisticOverlaySequence applies a sequence of patches
 // that mirrors a real-world EDMX overlay:

@@ -344,6 +344,53 @@ func TestApply_Remove_NoExistingAnnotations_IsNoOp(t *testing.T) {
 	}
 }
 
+func TestApply_Remove_NilData_RemovesAllAnnotations(t *testing.T) {
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" String="a"/>
+        <Annotation Term="Core.LongDescription" String="b"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "remove",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     nil,
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(result.Content, "Core.Description") {
+		t.Errorf("expected Core.Description removed from output:\n%s", result.Content)
+	}
+	if strings.Contains(result.Content, "Core.LongDescription") {
+		t.Errorf("expected Core.LongDescription removed from output:\n%s", result.Content)
+	}
+}
+
+func TestApply_Remove_NilData_NoExistingAnnotations_IsNoOp(t *testing.T) {
+	p := newProcessor(t, minimalXML(""))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "remove",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     nil,
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Output must be a valid EDMX document — the entity type must still be present
+	if !strings.Contains(result.Content, `Name="Book"`) {
+		t.Errorf("EntityType Book missing from output:\n%s", result.Content)
+	}
+}
+
 // ─── Apply — reconcile: pre-existing inline Annotation nodes ─────────────────
 
 func TestApply_Reconcile_InlineAnnotations_MergedBeforeProcessing(t *testing.T) {
