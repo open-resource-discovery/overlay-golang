@@ -636,3 +636,49 @@ func TestDecompose_RecursiveResolveError_Propagates(t *testing.T) {
 		t.Fatal("expected at least one leaf patch to be produced")
 	}
 }
+
+// ---- SortedLocations: multi-element array patches ---------------------------
+
+// TestApply_Remove_MultipleArrayElements_ReverseOrder removes two entries from
+// the supportedProtocolVersions array (4 elements) and asserts that only the
+// targeted indices are gone and the remaining two are in original order.
+func TestApply_Remove_MultipleArrayElements_ReverseOrder(t *testing.T) {
+	p := newProcessor(t, mcpContent)
+	versions := mcpDoc["supportedProtocolVersions"].([]any)
+	want0 := versions[0].(string)
+	want2 := versions[2].(string)
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"remove",
+		model.Selector{JSONPath: "$.supportedProtocolVersions[1,3]"},
+		nil,
+	))
+
+	got := result["supportedProtocolVersions"].([]any)
+	if len(got) != 2 {
+		t.Fatalf("len = %d after removing 2 elements, want 2", len(got))
+	}
+	if got[0].(string) != want0 || got[1].(string) != want2 {
+		t.Errorf("remaining = %v, want [%s %s]", got, want0, want2)
+	}
+}
+
+// TestApply_Merge_WildcardArray_AllElementsUpdated verifies that a wildcard
+// merge patch visits every array element, confirming complete multi-match
+// traversal via SortedLocations.
+func TestApply_Merge_WildcardArray_AllElementsUpdated(t *testing.T) {
+	p := newProcessor(t, mcpContent)
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"merge",
+		model.Selector{JSONPath: "$.tools[*]"},
+		map[string]any{"deprecated": true},
+	))
+
+	tools := result["tools"].([]any)
+	for i, tool := range tools {
+		m := tool.(map[string]any)
+		if m["deprecated"] != true {
+			t.Errorf("tools[%d].deprecated: got %v, want true", i, m["deprecated"])
+		}
+	}
+}

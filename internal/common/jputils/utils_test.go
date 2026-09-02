@@ -626,3 +626,157 @@ func TestAnd(t *testing.T) {
 		}
 	})
 }
+
+// ---- SortedLocations --------------------------------------------------------
+
+// sortedStrings converts a []jp.Expr to []string for easy assertion.
+func sortedStrings(exprs []jp.Expr) []string {
+	out := make([]string, len(exprs))
+	for i, e := range exprs {
+		out[i] = e.String()
+	}
+	return out
+}
+
+func TestSortedLocations_EmptyDocument_ReturnsEmptySlice(t *testing.T) {
+	expr, _ := jp.ParseString("$.missing")
+	result := SortedLocations(expr, map[string]any{})
+	if len(result) != 0 {
+		t.Errorf("len = %d, want 0", len(result))
+	}
+}
+
+func TestSortedLocations_SingleMatch_ReturnsSingleElement(t *testing.T) {
+	doc := map[string]any{"name": "Alice"}
+	expr, _ := jp.ParseString("$.name")
+	result := SortedLocations(expr, doc)
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].String() != "$.name" {
+		t.Errorf("got %q, want \"$.name\"", result[0].String())
+	}
+}
+
+// Remove from back to front: highest index first so earlier indices are still
+// valid after each removal.
+func TestSortedLocations_Array_IndicesDescending(t *testing.T) {
+	doc := map[string]any{
+		"items": []any{"a", "b", "c", "d"},
+	}
+	expr, _ := jp.ParseString("$.items[*]")
+	got := sortedStrings(SortedLocations(expr, doc))
+	want := []string{"$.items[3]", "$.items[2]", "$.items[1]", "$.items[0]"}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+// Simulates the motivating use-case: remove all odd-index elements.
+// Applying removals in the order returned by SortedLocations leaves even-index
+// elements intact because no earlier index is shifted by a later removal.
+func TestSortedLocations_RemoveOddIndices_ResultIsCorrect(t *testing.T) {
+	doc := map[string]any{
+		"items": []any{"a", "b", "c", "d", "e"},
+	}
+	expr, _ := jp.ParseString("$.items[1,3]")
+	locations := SortedLocations(expr, doc)
+
+	// Verify the order is [3] before [1].
+	got := sortedStrings(locations)
+	want := []string{"$.items[3]", "$.items[1]"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+
+	// Apply removals and assert correct elements remain.
+	for _, loc := range locations {
+		if _, err := loc.Remove(doc); err != nil {
+			t.Fatalf("Remove(%s): %v", loc.String(), err)
+		}
+	}
+	remaining := doc["items"].([]any)
+	wantItems := []any{"a", "c", "e"}
+	if !slices.Equal(remaining, wantItems) {
+		t.Errorf("items after removal = %v, want %v", remaining, wantItems)
+	}
+}
+
+// When the expression matches elements across multiple parent objects, sorting
+// must produce outer indices descending and inner indices descending.
+func TestSortedLocations_NestedArray_OuterIndexDescendingThenInner(t *testing.T) {
+	doc := map[string]any{
+		"a": []any{
+			map[string]any{"items": []any{"x", "y"}},
+			map[string]any{"items": []any{"p", "q"}},
+		},
+	}
+	expr, _ := jp.ParseString("$.a[*].items[*]")
+	got := sortedStrings(SortedLocations(expr, doc))
+	want := []string{
+		"$.a[1].items[1]",
+		"$.a[1].items[0]",
+		"$.a[0].items[1]",
+		"$.a[0].items[0]",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+// Object-key wildcards sort keys in reverse lexicographic order.
+func TestSortedLocations_ObjectWildcard_KeysReverseLexicographic(t *testing.T) {
+	doc := map[string]any{
+		"paths": map[string]any{
+			"/pets":  map[string]any{},
+			"/users": map[string]any{},
+		},
+	}
+	expr, _ := jp.ParseString("$.paths.*")
+	got := sortedStrings(SortedLocations(expr, doc))
+	want := []string{"$.paths['/users']", "$.paths['/pets']"}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+// A path expression that matches nothing returns a zero-length slice.
+// jp.Expr.Locate returns nil for no matches, so the result may be nil — callers
+// must treat nil and empty slice identically (len == 0).
+func TestSortedLocations_NoMatch_ReturnsZeroLength(t *testing.T) {
+	doc := map[string]any{"x": 1}
+	expr, _ := jp.ParseString("$.z[*]")
+	result := SortedLocations(expr, doc)
+	if len(result) != 0 {
+		t.Errorf("len = %d, want 0", len(result))
+	}
+}
+
+// The sort is stable: a single match must not panic and must be returned as-is.
+func TestSortedLocations_StableSort_SingleMatchPreservedAsIs(t *testing.T) {
+	doc := map[string]any{"x": map[string]any{"y": "leaf"}}
+	expr, _ := jp.ParseString("$..y")
+	result := SortedLocations(expr, doc)
+	if len(result) != 1 {
+		t.Fatalf("len = %d, want 1", len(result))
+	}
+	if result[0].String() != "$.x.y" {
+		t.Errorf("got %q, want \"$.x.y\"", result[0].String())
+	}
+}
+
+// Within a single parent, deeper index positions are sorted before shallower
+// ones so that removals of later elements do not shift earlier indices.
+func TestSortedLocations_SubArray_HigherIndexFirst(t *testing.T) {
+	doc := map[string]any{
+		"items": []any{
+			map[string]any{"sub": []any{"x", "y"}},
+		},
+	}
+	expr, _ := jp.ParseString("$.items[0].sub[*]")
+	got := sortedStrings(SortedLocations(expr, doc))
+	want := []string{"$.items[0].sub[1]", "$.items[0].sub[0]"}
+	if !slices.Equal(got, want) {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}

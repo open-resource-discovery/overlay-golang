@@ -578,3 +578,66 @@ func TestApply_RootSelector_Update_ReplacesDocument(t *testing.T) {
 		t.Error("definitions should be gone after root update")
 	}
 }
+
+// ---- SortedLocations: multi-element array patches ---------------------------
+
+// csnInlineDoc is a minimal CSN-shaped document with a known items array used
+// for SortedLocations tests. The flight_model fixture has no array fields, so
+// we use a self-contained document.
+const csnInlineDoc = `{
+  "$schema": "https://json.schemastore.org/csn",
+  "csnInteropEffective": "1.0",
+  "$version": "1.0",
+  "items": [
+    {"id": "a"},
+    {"id": "b"},
+    {"id": "c"},
+    {"id": "d"}
+  ]
+}`
+
+// TestApply_Remove_MultipleArrayElements_ReverseOrder removes elements at
+// indices [1] and [3] from the items array and asserts that only elements [0]
+// and [2] remain in original order — proving reverse-index removal via
+// SortedLocations prevents off-by-one corruption.
+func TestApply_Remove_MultipleArrayElements_ReverseOrder(t *testing.T) {
+	p := mustNewProcessor(t, csnInlineDoc)
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"remove",
+		model.Selector{JSONPath: "$.items[1,3]"},
+		nil,
+	))
+
+	items := result["items"].([]any)
+	if len(items) != 2 {
+		t.Fatalf("items len = %d after removing 2 elements, want 2", len(items))
+	}
+	if got := items[0].(map[string]any)["id"]; got != "a" {
+		t.Errorf("items[0].id = %v, want a", got)
+	}
+	if got := items[1].(map[string]any)["id"]; got != "c" {
+		t.Errorf("items[1].id = %v, want c", got)
+	}
+}
+
+// TestApply_Merge_WildcardArray_AllElementsUpdated verifies that a wildcard
+// merge patch visits every array element, confirming complete multi-match
+// traversal via SortedLocations.
+func TestApply_Merge_WildcardArray_AllElementsUpdated(t *testing.T) {
+	p := mustNewProcessor(t, csnInlineDoc)
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"merge",
+		model.Selector{JSONPath: "$.items[*]"},
+		map[string]any{"active": true},
+	))
+
+	items := result["items"].([]any)
+	for i, item := range items {
+		m := item.(map[string]any)
+		if m["active"] != true {
+			t.Errorf("items[%d].active: got %v, want true", i, m["active"])
+		}
+	}
+}

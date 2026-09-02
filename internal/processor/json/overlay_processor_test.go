@@ -617,3 +617,63 @@ func TestDecompose_RecursiveError_Propagates(t *testing.T) {
 		t.Fatal("expected at least one leaf patch to be produced")
 	}
 }
+
+// ---- SortedLocations: multi-element array patches ---------------------------
+// These tests verify that when a patch targets multiple array elements via a
+// wildcard expression, the processor applies operations in reverse-index order
+// (highest index first). This ensures that remove patches do not shift earlier
+// indices and that all matching elements are visited for merge/update patches.
+
+// TestApply_Remove_MultipleArrayElements_ReverseOrder removes elements at
+// specific array positions and asserts that the remaining elements are exactly
+// the ones not targeted, in their original order — proving that reverse-index
+// removal (via SortedLocations) avoids off-by-one corruption.
+func TestApply_Remove_MultipleArrayElements_ReverseOrder(t *testing.T) {
+	// tools has 6 elements in the fixture; target indices [1] and [3].
+	p := newProcessor(t, mcpContent)
+	name0 := mcpDoc["tools"].([]any)[0].(map[string]any)["name"].(string)
+	name2 := mcpDoc["tools"].([]any)[2].(map[string]any)["name"].(string)
+	name4 := mcpDoc["tools"].([]any)[4].(map[string]any)["name"].(string)
+	name5 := mcpDoc["tools"].([]any)[5].(map[string]any)["name"].(string)
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"remove",
+		model.Selector{JSONPath: "$.tools[1,3]"},
+		nil,
+	))
+
+	tools := result["tools"].([]any)
+	if len(tools) != 4 {
+		t.Fatalf("tools len = %d after removing 2 elements, want 4", len(tools))
+	}
+	names := []string{
+		tools[0].(map[string]any)["name"].(string),
+		tools[1].(map[string]any)["name"].(string),
+		tools[2].(map[string]any)["name"].(string),
+		tools[3].(map[string]any)["name"].(string),
+	}
+	want := []string{name0, name2, name4, name5}
+	if !reflect.DeepEqual(names, want) {
+		t.Errorf("remaining tool names = %v, want %v", names, want)
+	}
+}
+
+// TestApply_Merge_WildcardArray_AllElementsUpdated verifies that a merge patch
+// with a wildcard selector visits every array element — not just the first or
+// last — confirming that multi-match traversal via SortedLocations is complete.
+func TestApply_Merge_WildcardArray_AllElementsUpdated(t *testing.T) {
+	p := newProcessor(t, mcpContent)
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"merge",
+		model.Selector{JSONPath: "$.tools[*]"},
+		map[string]any{"deprecated": true},
+	))
+
+	tools := result["tools"].([]any)
+	for i, tool := range tools {
+		m := tool.(map[string]any)
+		if m["deprecated"] != true {
+			t.Errorf("tools[%d].deprecated: got %v, want true", i, m["deprecated"])
+		}
+	}
+}

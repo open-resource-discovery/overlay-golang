@@ -1143,3 +1143,53 @@ func TestDecompose_RemoveAction_UnsupportedSelector_ReturnsError(t *testing.T) {
 		t.Fatal("expected error for unsupported (empty) selector, got nil")
 	}
 }
+
+// ---- SortedLocations: multi-element array patches ---------------------------
+
+// TestApply_Remove_MultipleArrayElements_ReverseOrder removes elements at
+// indices [1] and [3] from the skills array (4 elements) and asserts that only
+// elements [0] and [2] remain in original order — proving reverse-index removal
+// via SortedLocations prevents off-by-one corruption.
+func TestApply_Remove_MultipleArrayElements_ReverseOrder(t *testing.T) {
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
+	name0 := ficaDoc["skills"].([]any)[0].(map[string]any)["name"].(string)
+	name2 := ficaDoc["skills"].([]any)[2].(map[string]any)["name"].(string)
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"remove",
+		model.Selector{JSONPath: "$.skills[1,3]"},
+		nil,
+	))
+
+	skills := result["skills"].([]any)
+	if len(skills) != 2 {
+		t.Fatalf("skills len = %d after removing 2 elements, want 2", len(skills))
+	}
+	if got := skills[0].(map[string]any)["name"]; got != name0 {
+		t.Errorf("skills[0].name = %v, want %v", got, name0)
+	}
+	if got := skills[1].(map[string]any)["name"]; got != name2 {
+		t.Errorf("skills[1].name = %v, want %v", got, name2)
+	}
+}
+
+// TestApply_Merge_WildcardArray_AllElementsUpdated verifies that a wildcard
+// merge patch visits every array element, confirming complete multi-match
+// traversal via SortedLocations.
+func TestApply_Merge_WildcardArray_AllElementsUpdated(t *testing.T) {
+	p := NewOverlayProcessor(makeDefinition(ficaContent))
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"merge",
+		model.Selector{JSONPath: "$.skills[*]"},
+		map[string]any{"deprecated": true},
+	))
+
+	skills := result["skills"].([]any)
+	for i, skill := range skills {
+		m := skill.(map[string]any)
+		if m["deprecated"] != true {
+			t.Errorf("skills[%d].deprecated: got %v, want true", i, m["deprecated"])
+		}
+	}
+}
