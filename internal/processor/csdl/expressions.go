@@ -4,8 +4,8 @@ import (
 	"math"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/ohler55/ojg/jp"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/jputils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/model"
@@ -13,13 +13,13 @@ import (
 
 type Expressions byte
 
-func (self Expressions) Resolve(document map[string]any, selector *model.Selector) (jp.Expr, error) {
+func (self Expressions) Resolve(document map[string]any, selector *model.Selector) (jp.Expr, *errors.OverlayError) {
 	if selector.Root != nil && *selector.Root {
 		return jputils.Root(), nil
 	}
 
 	if len(selector.JSONPath) > 0 {
-		return jp.ParseString(selector.JSONPath)
+		return jputils.Parse(selector.JSONPath)
 	}
 
 	if len(selector.Operation) > 0 {
@@ -66,10 +66,10 @@ func (self Expressions) Resolve(document map[string]any, selector *model.Selecto
 		return self.Namespace(document, selector.Namespace)
 	}
 
-	return nil, errors.Errorf("unsupported selector: %+v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", selector)
 }
 
-func (self Expressions) EnumType(document any, fqname string) (jp.Expr, error) {
+func (self Expressions) EnumType(document any, fqname string) (jp.Expr, *errors.OverlayError) {
 	namespace, name := self.fqsplit(fqname)
 	pexpression, _, err := jputils.Pinpoint(document, jputils.Expr(
 		"$",
@@ -80,21 +80,21 @@ func (self Expressions) EnumType(document any, fqname string) (jp.Expr, error) {
 	if err != nil {
 		return nil, err
 	} else if node, ok := pexpression.First(document).(map[string]any); !ok || node["$Kind"] != "EnumType" {
-		return nil, errors.Errorf("unexpected element found: %v", pexpression.First(document))
+		return nil, errors.Create(errors.Severity_Warning, "unexpected element found: %v", pexpression.First(document))
 	}
 
 	return pexpression, nil
 }
 
-func (self Expressions) Namespace(document any, namespace string) (jp.Expr, error) {
+func (self Expressions) Namespace(document any, namespace string) (jp.Expr, *errors.OverlayError) {
 	if expression := jputils.Expr("$", namespace); expression.Has(document) {
 		return expression, nil
 	} else {
-		return nil, errors.Errorf("no such element: %s", expression.String())
+		return nil, errors.Create(errors.Severity_Warning, "no such element: %s", expression.String())
 	}
 }
 
-func (self Expressions) Operation(document any, fqname string) (jp.Expr, error) {
+func (self Expressions) Operation(document any, fqname string) (jp.Expr, *errors.OverlayError) {
 	namespace, name := self.fqsplit(fqname)
 	pexpression, _, err := jputils.Pinpoint(document, jputils.Expr(
 		"$",
@@ -105,18 +105,18 @@ func (self Expressions) Operation(document any, fqname string) (jp.Expr, error) 
 	if err != nil {
 		return nil, err
 	} else if node, ok := pexpression.First(document).([]any); !ok || len(node) != 1 {
-		return nil, errors.Errorf("ambiguous expression: %s", pexpression.String())
+		return nil, errors.Create(errors.Severity_Warning, "ambiguous expression: %s", pexpression.String())
 	}
 
 	// Per OData CSDL JSON spec, overloaded functions/actions are stored as arrays.
 	if node, ok := pexpression.Nth(0).First(document).(map[string]any); !ok || !utils.OneOf(node["$Kind"], "Action", "Function") {
-		return nil, errors.Errorf("unexpected element found: %v", pexpression.First(document))
+		return nil, errors.Create(errors.Severity_Warning, "unexpected element found: %v", pexpression.First(document))
 	}
 
 	return pexpression.Nth(0), nil
 }
 
-func (self Expressions) EntitySet(document any, fqname string) (jp.Expr, error) {
+func (self Expressions) EntitySet(document any, fqname string) (jp.Expr, *errors.OverlayError) {
 	namespace, name := self.fqsplit(fqname)
 
 	for _, candidate := range utils.Ternary(
@@ -145,55 +145,55 @@ func (self Expressions) EntitySet(document any, fqname string) (jp.Expr, error) 
 		} else if err != nil {
 			return nil, err
 		} else if node, ok := pexpression.First(document).(map[string]any); !ok || node["$Collection"] != true {
-			return nil, errors.Errorf("unexpected element found: %v", pexpression.First(document))
+			return nil, errors.Create(errors.Severity_Warning, "unexpected element found: %v", pexpression.First(document))
 		} else {
 			return pexpression, nil
 		}
 	}
 
-	return nil, errors.Errorf("entity set '%s' not found", fqname)
+	return nil, errors.Create(errors.Severity_Warning, "entity set '%s' not found", fqname)
 }
 
-func (self Expressions) EntityType(document any, fqname string) (jp.Expr, error) {
+func (self Expressions) EntityType(document any, fqname string) (jp.Expr, *errors.OverlayError) {
 	namespace, name := self.fqsplit(fqname)
 	pexpression, _, err := jputils.Pinpoint(document, jputils.Expr("$", utils.Ternary(len(namespace) == 0, "*", namespace), name))
 
 	if err != nil {
 		return nil, err
 	} else if node, ok := pexpression.First(document).(map[string]any); !ok || node["$Kind"] != "EntityType" {
-		return nil, errors.Errorf("unexpected element found: %v", pexpression.First(document))
+		return nil, errors.Create(errors.Severity_Warning, "unexpected element found: %v", pexpression.First(document))
 	}
 
 	return pexpression, nil
 }
 
-func (self Expressions) ComplexType(document any, fqname string) (jp.Expr, error) {
+func (self Expressions) ComplexType(document any, fqname string) (jp.Expr, *errors.OverlayError) {
 	namespace, name := self.fqsplit(fqname)
 	pexpression, _, err := jputils.Pinpoint(document, jputils.Expr("$", utils.Ternary(len(namespace) == 0, "*", namespace), name))
 
 	if err != nil {
 		return nil, err
 	} else if node, ok := pexpression.First(document).(map[string]any); !ok || node["$Kind"] != "ComplexType" {
-		return nil, errors.Errorf("unexpected element found: %v", pexpression.First(document))
+		return nil, errors.Create(errors.Severity_Warning, "unexpected element found: %v", pexpression.First(document))
 	}
 
 	return pexpression, nil
 }
 
-func (self Expressions) EnumTypeMember(document any, fqname string, member string) (jp.Expr, error) {
+func (self Expressions) EnumTypeMember(document any, fqname string, member string) (jp.Expr, *errors.OverlayError) {
 	parent, err := self.EnumType(document, fqname)
 	if err != nil {
 		return nil, err
 	}
 
 	if expression := parent.Child(member); !expression.Has(document) {
-		return nil, errors.Errorf("no such element: %s", expression.String())
+		return nil, errors.Create(errors.Severity_Warning, "no such element: %s", expression.String())
 	}
 
 	return parent, err // This is ok, see: https://docs.oasis-open.org/odata/odata-csdl-json/v4.01/odata-csdl-json-v4.01.html#sec_EnumerationTypeMember
 }
 
-func (self Expressions) OperationParameter(document any, fqname string, parameter string) (jp.Expr, error) {
+func (self Expressions) OperationParameter(document any, fqname string, parameter string) (jp.Expr, *errors.OverlayError) {
 	parent, err := self.Operation(document, fqname)
 	if err != nil {
 		return nil, err
@@ -204,7 +204,7 @@ func (self Expressions) OperationParameter(document any, fqname string, paramete
 	return expression, utils.Third(jputils.Pinpoint(document, expression))
 }
 
-func (self Expressions) OperationReturnType(document any, fqname string) (jp.Expr, error) {
+func (self Expressions) OperationReturnType(document any, fqname string) (jp.Expr, *errors.OverlayError) {
 	parent, err := self.Operation(document, fqname)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func (self Expressions) OperationReturnType(document any, fqname string) (jp.Exp
 	return expression, utils.Third(jputils.Pinpoint(document, expression))
 }
 
-func (self Expressions) EntityTypeProperty(document any, fqname string, property string) (jp.Expr, error) {
+func (self Expressions) EntityTypeProperty(document any, fqname string, property string) (jp.Expr, *errors.OverlayError) {
 	parent, err := self.EntityType(document, fqname)
 	if err != nil {
 		return nil, err
@@ -224,11 +224,11 @@ func (self Expressions) EntityTypeProperty(document any, fqname string, property
 	if expression := parent.Child(property); expression.Has(document) {
 		return expression, nil
 	} else {
-		return nil, errors.Errorf("no such element: %s", expression.String())
+		return nil, errors.Create(errors.Severity_Warning, "no such element: %s", expression.String())
 	}
 }
 
-func (self Expressions) ComplexTypeProperty(document any, fqname string, property string) (jp.Expr, error) {
+func (self Expressions) ComplexTypeProperty(document any, fqname string, property string) (jp.Expr, *errors.OverlayError) {
 	parent, err := self.ComplexType(document, fqname)
 	if err != nil {
 		return nil, err
@@ -237,7 +237,7 @@ func (self Expressions) ComplexTypeProperty(document any, fqname string, propert
 	if expression := parent.Child(property); expression.Has(document) {
 		return expression, nil
 	} else {
-		return nil, errors.Errorf("no such element: %s", expression.String())
+		return nil, errors.Create(errors.Severity_Warning, "no such element: %s", expression.String())
 	}
 }
 

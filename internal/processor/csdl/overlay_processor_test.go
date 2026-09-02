@@ -16,21 +16,21 @@ var odataContent = testutils.LoadFixture("testdata/odatademo.json")
 // ---- NewOverlayProcessor ----------------------------------------------------
 
 func TestNewOverlayProcessor_ValidJSON_Succeeds(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{Content: `{"$Version":"4.0"}`}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	defer testutils.AssertDoesNotPanic(t, "unexpected error: %v")
+
+	NewOverlayProcessor(model.ResourceDefinition{Content: `{"$Version":"4.0"}`})
 }
 
 func TestNewOverlayProcessor_InvalidJSON_ReturnsError(t *testing.T) {
-	if _, err := NewOverlayProcessor(model.ResourceDefinition{Content: `{not valid json`}); err == nil {
-		t.Fatal("expected error for invalid JSON, got nil")
-	}
+	defer testutils.AssertPanics(t, "expected error for invalid JSON")
+
+	NewOverlayProcessor(model.ResourceDefinition{Content: `{not valid json`})
 }
 
 // ---- Apply: output fields ---------------------------------------------------
 
 func TestApply_SetsPurposeOnResult(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	rd, err := p.Apply(model.OverlayDefinition{
 		Purpose: "my-purpose",
 		Overlay: model.Overlay{Patches: []model.Patch{}},
@@ -44,7 +44,7 @@ func TestApply_SetsPurposeOnResult(t *testing.T) {
 }
 
 func TestApply_SetsVisibilityOnResult(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	rd, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Visibility: "internal", Patches: []model.Patch{}},
 	})
@@ -57,7 +57,7 @@ func TestApply_SetsVisibilityOnResult(t *testing.T) {
 }
 
 func TestApply_NoPatch_ContentUnchanged(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{Overlay: model.Overlay{Patches: []model.Patch{}}})
 	if !reflect.DeepEqual(result["ODataDemo"], csdlDoc["ODataDemo"]) {
 		t.Error("content changed without any patches")
@@ -65,7 +65,7 @@ func TestApply_NoPatch_ContentUnchanged(t *testing.T) {
 }
 
 func TestApply_DoesNotMutateOriginalContent(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"@Core.Description": "mutated"},
@@ -79,7 +79,7 @@ func TestApply_DoesNotMutateOriginalContent(t *testing.T) {
 // ---- Apply: merge — semantic selectors --------------------------------------
 
 func TestApply_Merge_EntityType_AddsNewAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"@Core.Description": "A product"},
@@ -90,7 +90,7 @@ func TestApply_Merge_EntityType_AddsNewAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_EntityType_PreservesExistingFields(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"@Core.Description": "A product"},
@@ -103,7 +103,7 @@ func TestApply_Merge_EntityType_PreservesExistingFields(t *testing.T) {
 
 func TestApply_Merge_EntityType_OverwritesExistingAnnotation(t *testing.T) {
 	base := `{"ODataDemo":{"Product":{"$Kind":"EntityType","@Core.Description":"old"}}}`
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"@Core.Description": "new"},
@@ -114,7 +114,7 @@ func TestApply_Merge_EntityType_OverwritesExistingAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_EntityTypeProperty_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product", PropertyType: "Description"},
 		map[string]any{"@Core.IsLanguageDependent": true},
@@ -125,7 +125,7 @@ func TestApply_Merge_EntityTypeProperty_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_ComplexType_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{ComplexType: "ODataDemo.Address"},
 		map[string]any{"@Core.Description": "A mailing address"},
@@ -136,7 +136,7 @@ func TestApply_Merge_ComplexType_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_ComplexTypeProperty_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{ComplexType: "ODataDemo.Address", PropertyType: "Street"},
 		map[string]any{"@Core.Description": "Street name"},
@@ -147,7 +147,7 @@ func TestApply_Merge_ComplexTypeProperty_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_EnumType_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EnumType: "ODataDemo.FileAccess"},
 		map[string]any{"@Core.Description": "File access flags"},
@@ -158,7 +158,7 @@ func TestApply_Merge_EnumType_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_EnumTypeMember_AddsAnnotationWithPrefix(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
 		map[string]any{"@Core.Description": "Read access"},
@@ -169,7 +169,7 @@ func TestApply_Merge_EnumTypeMember_AddsAnnotationWithPrefix(t *testing.T) {
 }
 
 func TestApply_Merge_EntitySet_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntitySet: "ODataDemo.DemoService.Products"},
 		map[string]any{"@Core.Description": "All products"},
@@ -180,7 +180,7 @@ func TestApply_Merge_EntitySet_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_Namespace_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Namespace: "ODataDemo"},
 		map[string]any{"@Core.Description": "Demo namespace"},
@@ -191,7 +191,7 @@ func TestApply_Merge_Namespace_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_Operation_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Operation: "ODataDemo.ProductsByRating"},
 		map[string]any{"@Core.Description": "Filter products by rating"},
@@ -203,7 +203,7 @@ func TestApply_Merge_Operation_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_OperationParameter_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Operation: "ODataDemo.ProductsByRating", Parameter: "Rating"},
 		map[string]any{"@Core.Description": "Minimum rating"},
@@ -216,7 +216,7 @@ func TestApply_Merge_OperationParameter_AddsAnnotation(t *testing.T) {
 }
 
 func TestApply_Merge_OperationReturnType_AddsAnnotation(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Operation: "ODataDemo.ProductsByRating", ReturnType: utils.Ptr(true)},
 		map[string]any{"@Core.Description": "The returned products"},
@@ -230,7 +230,7 @@ func TestApply_Merge_OperationReturnType_AddsAnnotation(t *testing.T) {
 // ---- Apply: merge — inline property decomposition ---------------------------
 
 func TestApply_Merge_EntityType_InlineProperty_AddsAnnotationOnProperty(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{
@@ -243,7 +243,7 @@ func TestApply_Merge_EntityType_InlineProperty_AddsAnnotationOnProperty(t *testi
 }
 
 func TestApply_Merge_EntityType_MixedAnnotationAndProperty(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{
@@ -260,7 +260,7 @@ func TestApply_Merge_EntityType_MixedAnnotationAndProperty(t *testing.T) {
 }
 
 func TestApply_Merge_DollarPrefixedKeys_AreIgnored(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{
@@ -280,7 +280,7 @@ func TestApply_Merge_DollarPrefixedKeys_AreIgnored(t *testing.T) {
 // ---- Apply: merge — JSONPath selector ---------------------------------------
 
 func TestApply_Merge_JSONPath_AddsKey(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$.ODataDemo.Product"},
 		map[string]any{"@Core.Description": "via jsonpath"},
@@ -293,7 +293,7 @@ func TestApply_Merge_JSONPath_AddsKey(t *testing.T) {
 func TestApply_Merge_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 	// JSONPath selectors may now point to non-existing parts of the document.
 	// A merge via a non-existent path creates the node rather than being a no-op.
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
@@ -318,7 +318,7 @@ func TestApply_Merge_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 
 func TestApply_Update_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 	// An update via a non-existent JSONPath creates the node rather than being a no-op.
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{
@@ -344,7 +344,7 @@ func TestApply_Update_JSONPath_NonExistentPath_CreatesNode(t *testing.T) {
 // ---- Apply: merge — root selector -------------------------------------------
 
 func TestApply_Merge_Root_MergesIntoDocument(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: `{"$Version":"4.0","ODataDemo":{}}`, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: `{"$Version":"4.0","ODataDemo":{}}`, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
 		model.Selector{Root: utils.Ptr(true)},
 		map[string]any{"@Core.SchemaVersion": "1.0"},
@@ -357,7 +357,7 @@ func TestApply_Merge_Root_MergesIntoDocument(t *testing.T) {
 // ---- Apply: update action ---------------------------------------------------
 
 func TestApply_Update_EntityType_ReplacesNode(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"@Core.Description": "replaced"},
@@ -371,7 +371,7 @@ func TestApply_Update_EntityType_ReplacesNode(t *testing.T) {
 func TestApply_Update_EntityType_RemovesExistingFields(t *testing.T) {
 	// update with a semantic selector performs full replacement: existing fields
 	// that are not present in the patch data must be absent from the result.
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"$Kind": "EntityType", "$Key": []any{"ID"}, "ID": map[string]any{}, "@Core.Description": "Replaced."},
@@ -391,7 +391,7 @@ func TestApply_Update_EntityType_RemovesExistingFields(t *testing.T) {
 func TestApply_Update_EntityTypeProperty_ReplacesPropertyEntirely(t *testing.T) {
 	// update on EntityType+PropertyType replaces the property value entirely;
 	// attributes not supplied in the patch (e.g. @Measures.ISOCurrency) must be gone.
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EntityType: "ODataDemo.Product", PropertyType: "Price"},
 		map[string]any{"$Type": "Edm.Decimal", "$Nullable": false, "@Core.Description": "Mandatory price."},
@@ -412,7 +412,7 @@ func TestApply_Update_EnumTypeMember_ReplacesExistingAnnotation(t *testing.T) {
 	// update on EnumType+PropertyType removes all existing MemberName@* annotation
 	// keys for that member and sets the new annotation supplied in the patch.
 	base := `{"ODataDemo":{"FileAccess":{"$Kind":"EnumType","Read":1,"Read@Core.Description":"old","Read@Core.LongDescription":"also old"}}}`
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
 		map[string]any{"@Core.Description": "new description"},
@@ -429,7 +429,7 @@ func TestApply_Update_EnumTypeMember_ReplacesExistingAnnotation(t *testing.T) {
 func TestApply_Update_EnumTypeMember_LeavesOtherMembersUntouched(t *testing.T) {
 	// update on one enum member must not affect annotations of sibling members.
 	base := `{"ODataDemo":{"FileAccess":{"$Kind":"EnumType","Read":1,"Read@Core.Description":"old","Write":2,"Write@Core.Description":"write desc"}}}`
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
 		map[string]any{"@Core.Description": "updated read"},
@@ -445,7 +445,7 @@ func TestApply_Update_EnumTypeMember_LeavesOtherMembersUntouched(t *testing.T) {
 
 func TestApply_Remove_EnumTypeMember_RemovesMemberAndItsAnnotations(t *testing.T) {
 	base := "{\"ODataDemo\":{\"FileAccess\":{\"$Kind\":\"EnumType\",\"Read\":1,\"Read@Core.Description\":\"read\",\"Write\":2,\"Write@Core.Description\":\"write\"}}}"
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
 		model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
 		nil,
@@ -467,7 +467,7 @@ func TestApply_Update_EnumTypeAndMember_SimultaneouslyAnnotatesBoth(t *testing.T
 	// contains both a top-level annotation (applied to the type) and a nested
 	// map keyed by a member name (decomposed into a member-level update).
 	base := `{"ODataDemo":{"FileAccess":{"$Kind":"EnumType","Read":1,"Read@Core.Description":"old read","Write":2,"Write@Core.Description":"old write"}}}`
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EnumType: "ODataDemo.FileAccess"},
 		map[string]any{
@@ -489,7 +489,7 @@ func TestApply_Update_EnumTypeAndMember_SimultaneouslyAnnotatesBoth(t *testing.T
 }
 
 func TestApply_Update_Root_ReplacesDocument(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: `{"old":"value"}`, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: `{"old":"value"}`, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{Root: utils.Ptr(true)},
 		map[string]any{"@new": "value"},
@@ -503,7 +503,7 @@ func TestApply_Update_Root_ReplacesDocument(t *testing.T) {
 }
 
 func TestApply_Update_JSONPath_ReplacesNode(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{JSONPath: "$.ODataDemo.Product"},
 		map[string]any{"@Core.Description": "jsonpath-replaced"},
@@ -521,7 +521,7 @@ func TestApply_Update_JSONPath_ReplacesNode(t *testing.T) {
 // ---- Apply: remove action ---------------------------------------------------
 
 func TestApply_Remove_EntityType_NilData_DeletesEntireNode(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "remove", Selector: &model.Selector{EntityType: "ODataDemo.Category"}, Data: nil},
@@ -534,7 +534,7 @@ func TestApply_Remove_EntityType_NilData_DeletesEntireNode(t *testing.T) {
 }
 
 func TestApply_Remove_EntityTypeProperty_NilData_DeletesProperty(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "remove", Selector: &model.Selector{EntityType: "ODataDemo.Product", PropertyType: "Rating"}, Data: nil},
@@ -548,7 +548,7 @@ func TestApply_Remove_EntityTypeProperty_NilData_DeletesProperty(t *testing.T) {
 
 func TestApply_Remove_AnnotationKey_NullValue_DeletesAnnotation(t *testing.T) {
 	base := `{"ODataDemo":{"Product":{"$Kind":"EntityType","@Core.Description":"v","@Core.Tag":"t"}}}`
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("remove",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"@Core.Description": nil},
@@ -564,7 +564,7 @@ func TestApply_Remove_AnnotationKey_NullValue_DeletesAnnotation(t *testing.T) {
 }
 
 func TestApply_Remove_JSONPath_NilData_DeletesNode(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "remove", Selector: &model.Selector{JSONPath: "$.ODataDemo.Category"}, Data: nil},
@@ -577,7 +577,7 @@ func TestApply_Remove_JSONPath_NilData_DeletesNode(t *testing.T) {
 }
 
 func TestApply_Remove_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	// Should not error; expression.Has returns false → skipped
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
@@ -590,7 +590,7 @@ func TestApply_Remove_JSONPath_NonExistentPath_IsNoOp(t *testing.T) {
 }
 
 func TestApply_Remove_Root_NilData_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: `{"key":"value"}`, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: `{"key":"value"}`, MediaType: "application/json"})
 	_, err := p.Apply(model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "remove", Selector: &model.Selector{Root: utils.Ptr(true)}, Data: nil},
@@ -604,7 +604,7 @@ func TestApply_Remove_Root_NilData_ReturnsError(t *testing.T) {
 // ---- Apply: patch ordering --------------------------------------------------
 
 func TestApply_PatchesAppliedInOrder_LastWins(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "merge", Selector: &model.Selector{EntityType: "ODataDemo.Product"}, Data: map[string]any{"@x": "a"}},
@@ -618,7 +618,7 @@ func TestApply_PatchesAppliedInOrder_LastWins(t *testing.T) {
 }
 
 func TestApply_MergeFollowedByRemove_KeyRemoved(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
 		Overlay: model.Overlay{Patches: []model.Patch{
 			{Action: "merge", Selector: &model.Selector{EntityType: "ODataDemo.Product"}, Data: map[string]any{"@Core.Description": "added"}},
@@ -634,7 +634,7 @@ func TestApply_MergeFollowedByRemove_KeyRemoved(t *testing.T) {
 // ---- Apply: error cases -----------------------------------------------------
 
 func TestApply_UnknownAction_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	_, err := p.Apply(testutils.OnePatch("upsert",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{"@x": "y"},
@@ -645,7 +645,7 @@ func TestApply_UnknownAction_ReturnsError(t *testing.T) {
 }
 
 func TestApply_SemanticSelector_NotFound_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	_, err := p.Apply(testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.NonExistent"},
 		map[string]any{"@x": "y"},
@@ -656,7 +656,7 @@ func TestApply_SemanticSelector_NotFound_ReturnsError(t *testing.T) {
 }
 
 func TestApply_UnsupportedSelector_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	_, err := p.Apply(testutils.OnePatch("merge",
 		model.Selector{},
 		map[string]any{"@x": "y"},
@@ -667,7 +667,7 @@ func TestApply_UnsupportedSelector_ReturnsError(t *testing.T) {
 }
 
 func TestApply_InvalidJSONPath_ReturnsError(t *testing.T) {
-	p := testutils.AssertNoError(NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"}))
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	_, err := p.Apply(testutils.OnePatch("merge",
 		model.Selector{JSONPath: "$$[invalid"},
 		map[string]any{"@x": "y"},

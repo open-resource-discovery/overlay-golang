@@ -5,6 +5,16 @@ import (
 	"slices"
 )
 
+func Overwrite[K comparable, V any](destination map[K]V, source map[K]V) map[K]V {
+	clear(destination)
+
+	for key, value := range source {
+		destination[key] = value
+	}
+
+	return destination
+}
+
 func AsMap[E comparable](values ...E) map[E]E {
 	result := make(map[E]E, len(values)/2)
 
