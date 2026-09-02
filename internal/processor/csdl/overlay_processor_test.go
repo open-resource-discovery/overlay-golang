@@ -368,43 +368,45 @@ func TestApply_Update_EntityType_ReplacesNode(t *testing.T) {
 	}
 }
 
-func TestApply_Update_EntityType_RemovesExistingFields(t *testing.T) {
-	// update with a semantic selector performs full replacement: existing fields
-	// that are not present in the patch data must be absent from the result.
+func TestApply_Update_EntityType_OnlyChangesAnnotations(t *testing.T) {
+	// update with a semantic selector only updates annotations; existing non-annotation
+	// fields must be preserved.
 	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EntityType: "ODataDemo.Product"},
-		map[string]any{"$Kind": "EntityType", "$Key": []any{"ID"}, "ID": map[string]any{}, "@Core.Description": "Replaced."},
+		map[string]any{"@Core.Description": "Replaced."},
 	))
 	got := testutils.Get(t, result, "ODataDemo", "Product").(map[string]any)
-	if _, ok := got["$HasStream"]; ok {
-		t.Error("expected $HasStream removed by update, but it still exists")
-	}
-	if _, ok := got["Price"]; ok {
-		t.Error("expected Price removed by update, but it still exists")
-	}
 	if got["@Core.Description"] != "Replaced." {
 		t.Errorf("@Core.Description: got %v, want %q", got["@Core.Description"], "Replaced.")
 	}
+	if _, ok := got["$HasStream"]; !ok {
+		t.Error("expected $HasStream preserved by update, but it is missing")
+	}
+	if _, ok := got["Price"]; !ok {
+		t.Error("expected Price preserved by update, but it is missing")
+	}
 }
 
-func TestApply_Update_EntityTypeProperty_ReplacesPropertyEntirely(t *testing.T) {
-	// update on EntityType+PropertyType replaces the property value entirely;
-	// attributes not supplied in the patch (e.g. @Measures.ISOCurrency) must be gone.
+func TestApply_Update_EntityTypeProperty_ReplacesAnnotations(t *testing.T) {
+	// update on EntityType+PropertyType replaces all existing annotations on the
+	// property with those supplied in the patch; non-annotation attributes are preserved.
 	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
 		model.Selector{EntityType: "ODataDemo.Product", PropertyType: "Price"},
-		map[string]any{"$Type": "Edm.Decimal", "$Nullable": false, "@Core.Description": "Mandatory price."},
+		map[string]any{"@Core.Description": "Mandatory price."},
 	))
 	price := testutils.Get(t, result, "ODataDemo", "Product", "Price").(map[string]any)
-	if price["$Nullable"] != false {
-		t.Errorf("$Nullable: got %v, want false", price["$Nullable"])
-	}
 	if price["@Core.Description"] != "Mandatory price." {
 		t.Errorf("@Core.Description: got %v, want %q", price["@Core.Description"], "Mandatory price.")
 	}
+	// existing annotations not in the patch are removed
 	if _, ok := price["@Measures.ISOCurrency"]; ok {
 		t.Error("expected @Measures.ISOCurrency removed by update, but it still exists")
+	}
+	// non-annotation structural fields must be preserved
+	if price["$Type"] == nil {
+		t.Error("expected $Type preserved by update, but it is missing")
 	}
 }
 

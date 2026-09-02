@@ -207,12 +207,9 @@ func TestIntegration_Merge_EntityType_AddsAnnotations(t *testing.T) {
 
 // ---- update: EntityType selector --------------------------------------------
 
-// TestIntegration_Update_EntityType_ReplacesProductEntity replaces the Product entity
-// with a minimal definition, verifying that the Description and Price properties
-// are absent and the new @Core.Description annotation is present.
-// TestIntegration_Update_EntityType_ReplacesProductEntity replaces the Product entity
-// with a minimal definition, verifying that the @Core.Description annotation is present
-// and the entity has been updated to the supplied definition.
+// TestIntegration_Update_EntityType_ReplacesProductEntity applies an update patch to the
+// Product entity type with a @Core.Description annotation, verifying that the annotation
+// is added and all existing structural fields and properties are preserved.
 func TestIntegration_Update_EntityType_ReplacesProductEntity(t *testing.T) {
 	testutils.AssertDeepEquals(
 		t,
@@ -265,9 +262,9 @@ func TestIntegration_Merge_EntityTypeProperty_AddsDescriptionToPrice(t *testing.
 
 // ---- update: EntityType + PropertyType selector -----------------------------
 
-// TestIntegration_Update_EntityTypeProperty_ReplacesPrice replaces the Price property
-// entirely with a mandatory (non-nullable) definition that adds @Core.Description,
-// verifying that the prior definition is fully replaced.
+// TestIntegration_Update_EntityTypeProperty_ReplacesPrice applies an update patch to the
+// Price property of Product, replacing all existing annotations with the supplied
+// @Core.Description, while preserving structural ($-prefixed) fields.
 func TestIntegration_Update_EntityTypeProperty_ReplacesPrice(t *testing.T) {
 	testutils.AssertDeepEquals(
 		t,
@@ -276,8 +273,6 @@ func TestIntegration_Update_EntityTypeProperty_ReplacesPrice(t *testing.T) {
 			"update",
 			model.Selector{EntityType: "ODataDemo.Product", PropertyType: "Price"},
 			map[string]any{
-				"$Nullable":         false,
-				"$Type":             "Edm.Decimal",
 				"@Core.Description": "Mandatory price field.",
 			},
 		)),
@@ -456,9 +451,9 @@ func TestIntegration_Merge_Operation_AddsDescription(t *testing.T) {
 
 // ---- update: operation selector ---------------------------------------------
 
-// TestIntegration_Update_Operation_ReplacesProductsByRating replaces the
-// ProductsByRating function definition entirely, changing the Rating parameter to
-// non-nullable and adding a @Core.Description, verifying full replacement semantics.
+// TestIntegration_Update_Operation_ReplacesProductsByRating applies an update patch to the
+// ProductsByRating operation, adding @Core.Description while preserving all existing
+// structural fields ($Kind, $Parameter, $ReturnType).
 func TestIntegration_Update_Operation_ReplacesProductsByRating(t *testing.T) {
 	testutils.AssertDeepEquals(
 		t,
@@ -467,11 +462,6 @@ func TestIntegration_Update_Operation_ReplacesProductsByRating(t *testing.T) {
 			"update",
 			model.Selector{Operation: "ODataDemo.ProductsByRating"},
 			map[string]any{
-				"$Kind": "Function",
-				"$Parameter": []any{
-					map[string]any{"$Name": "Rating", "$Nullable": false, "$Type": "Edm.Int32"},
-				},
-				"$ReturnType":       map[string]any{"$Collection": true, "$Type": "self.Product"},
 				"@Core.Description": "Returns products with a rating at or above the given value.",
 			},
 		)),

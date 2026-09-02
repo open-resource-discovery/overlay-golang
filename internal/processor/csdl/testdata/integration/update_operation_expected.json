@@ -185,7 +185,7 @@
         "$Parameter": [
           {
             "$Name": "Rating",
-            "$Nullable": false,
+            "$Nullable": true,
             "$Type": "Edm.Int32"
           }
         ],

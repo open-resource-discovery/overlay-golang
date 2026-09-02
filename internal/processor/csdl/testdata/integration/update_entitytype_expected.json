@@ -134,12 +134,51 @@
       "Write": 2
     },
     "Product": {
+      "$HasStream": true,
       "$Key": [
         "ID"
       ],
       "$Kind": "EntityType",
       "@Core.Description": "Replaced product entity.",
-      "ID": {}
+      "Category": {
+        "$Kind": "NavigationProperty",
+        "$Partner": "Products",
+        "$Type": "self.Category"
+      },
+      "Currency": {
+        "$MaxLength": 3,
+        "$Nullable": true
+      },
+      "Description": {
+        "$Nullable": true,
+        "@Core.IsLanguageDependent": true
+      },
+      "DiscontinuedDate": {
+        "$Nullable": true,
+        "$Type": "Edm.Date"
+      },
+      "ID": {},
+      "Price": {
+        "$Nullable": true,
+        "$Type": "Edm.Decimal",
+        "@Measures.ISOCurrency": {
+          "$Path": "Currency"
+        }
+      },
+      "Rating": {
+        "$Nullable": true,
+        "$Type": "Edm.Int32"
+      },
+      "ReleaseDate": {
+        "$Nullable": true,
+        "$Type": "Edm.Date"
+      },
+      "Supplier": {
+        "$Kind": "NavigationProperty",
+        "$Nullable": true,
+        "$Partner": "Products",
+        "$Type": "self.Supplier"
+      }
     },
     "ProductsByRating": [
       {

@@ -135,17 +135,12 @@ func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, 
 		return nil, errors.WrapPrefix(err, "failed to resolve selector %+v", patch.Selector)
 	}
 
-	// Updates for everything but enum types and enum type members shall be applied directly
-	if patch.Action == "update" && len(patch.Selector.EnumType) == 0 {
-		return append(result, utils.Clone(patch, func(p *model.Patch) {
-			p.Selector = &model.Selector{JSONPath: expression.String()}
-		})), nil
-	}
+	// Remove of an enum type member or update shall remove all existing annotations first
+	if patch.Action == "update" || (patch.Action == "remove" && patch.Data == nil && isEnumTypeMemberSelector) {
+		prefix := utils.Ternary(!isEnumTypeMemberSelector, "", patch.Selector.PropertyType) + "@"
 
-	// Update/remove of an enum type member shall remove all of its annotations first
-	if isEnumTypeMemberSelector && (patch.Action == "update" || (patch.Action == "remove" && patch.Data == nil)) {
 		for _, candidate := range jputils.Expr(expression, "*").Locate(content, 0) {
-			if child, ok := candidate[len(candidate)-1].(jp.Child); ok && strings.HasPrefix(string(child), patch.Selector.PropertyType+"@") {
+			if child, ok := candidate[len(candidate)-1].(jp.Child); ok && strings.HasPrefix(string(child), prefix) {
 				result = append(result, utils.Clone(patch, func(p *model.Patch) {
 					p.Data = nil
 					p.Action = "remove"
