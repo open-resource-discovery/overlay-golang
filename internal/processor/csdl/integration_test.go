@@ -207,10 +207,11 @@ func TestIntegration_Merge_EntityType_AddsAnnotations(t *testing.T) {
 
 // ---- update: EntityType selector --------------------------------------------
 
-// TestIntegration_Update_EntityType_ReplacesProductEntity applies an update patch to the
+// TestIntegration_Update_EntityType_ReplacesAnnotations applies an update patch to the
 // Product entity type with a @Core.Description annotation, verifying that the annotation
 // is added and all existing structural fields and properties are preserved.
-func TestIntegration_Update_EntityType_ReplacesProductEntity(t *testing.T) {
+// Structural ($-prefixed) keys must not be included in the patch data for semantic selectors.
+func TestIntegration_Update_EntityType_ReplacesAnnotations(t *testing.T) {
 	testutils.AssertDeepEquals(
 		t,
 		loadExpected("update_entitytype_expected.json"),
@@ -218,8 +219,6 @@ func TestIntegration_Update_EntityType_ReplacesProductEntity(t *testing.T) {
 			"update",
 			model.Selector{EntityType: "ODataDemo.Product"},
 			map[string]any{
-				"$Kind":             "EntityType",
-				"$Key":              []any{"ID"},
 				"ID":                map[string]any{},
 				"@Core.Description": "Replaced product entity.",
 			},
@@ -473,6 +472,8 @@ func TestIntegration_Update_Operation_ReplacesProductsByRating(t *testing.T) {
 // TestIntegration_Update_EnumType_AddsAnnotation applies an update patch to the
 // FileAccess enum type that adds a @Core.Description annotation, verifying that all
 // member values (Read, Write, Create, Delete) and structural fields are preserved.
+// Patch data for semantic selectors must not include structural ($-prefixed) keys or
+// bare scalar values — only @-prefixed annotation keys and nested map sub-entries are allowed.
 func TestIntegration_Update_EnumType_AddsAnnotation(t *testing.T) {
 	testutils.AssertDeepEquals(
 		t,
@@ -481,11 +482,6 @@ func TestIntegration_Update_EnumType_AddsAnnotation(t *testing.T) {
 			"update",
 			model.Selector{EnumType: "ODataDemo.FileAccess"},
 			map[string]any{
-				"$Kind":             "EnumType",
-				"$UnderlyingType":   "Edm.Int32",
-				"$IsFlags":          true,
-				"Read":              float64(1),
-				"Write":             float64(2),
 				"@Core.Description": "Bitmask for file access permissions.",
 			},
 		)),

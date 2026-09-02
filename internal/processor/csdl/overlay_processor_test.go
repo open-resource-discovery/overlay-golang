@@ -259,21 +259,87 @@ func TestApply_Merge_EntityType_MixedAnnotationAndProperty(t *testing.T) {
 	}
 }
 
-func TestApply_Merge_DollarPrefixedKeys_AreIgnored(t *testing.T) {
+func TestApply_Merge_DollarPrefixedKeys_ReturnsError(t *testing.T) {
+	// Structural ($-prefixed) keys are not allowed in semantic selector patches.
 	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
-	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
+	_, err := p.Apply(testutils.OnePatch("merge",
 		model.Selector{EntityType: "ODataDemo.Product"},
 		map[string]any{
 			"$Kind":             "SomethingElse",
 			"@Core.Description": "A product",
 		},
 	))
-	// $Kind must not be changed
-	if got := testutils.Get(t, result, "ODataDemo", "Product", "$Kind"); got != "EntityType" {
-		t.Errorf("$Kind was mutated: got %v", got)
+	if err == nil {
+		t.Fatal("expected error for $-prefixed keys in semantic selector patch, got nil")
 	}
+}
+
+func TestApply_Update_DollarPrefixedKeys_ReturnsError(t *testing.T) {
+	// Structural ($-prefixed) keys are not allowed in semantic selector patches.
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
+	_, err := p.Apply(testutils.OnePatch("update",
+		model.Selector{EntityType: "ODataDemo.Product"},
+		map[string]any{
+			"$Kind":             "EntityType",
+			"@Core.Description": "A product",
+		},
+	))
+	if err == nil {
+		t.Fatal("expected error for $-prefixed keys in semantic selector patch, got nil")
+	}
+}
+
+func TestApply_Merge_OnlyDollarPrefixedKeys_ReturnsError(t *testing.T) {
+	// A patch whose data contains only $-prefixed keys must also return an error.
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
+	_, err := p.Apply(testutils.OnePatch("merge",
+		model.Selector{EntityType: "ODataDemo.Product"},
+		map[string]any{"$Kind": "EntityType"},
+	))
+	if err == nil {
+		t.Fatal("expected error for $-only patch data in semantic selector, got nil")
+	}
+}
+
+func TestApply_Merge_DollarPrefixedKeys_JSONPathSelector_Succeeds(t *testing.T) {
+	// $-prefixed keys are only rejected for semantic selectors; JSONPath selectors
+	// pass the data through unchanged.
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
+		model.Selector{JSONPath: "$.ODataDemo.Product"},
+		map[string]any{
+			"$Kind":             "EntityType",
+			"@Core.Description": "A product",
+		},
+	))
 	if got := testutils.Get(t, result, "ODataDemo", "Product", "@Core.Description"); got != "A product" {
 		t.Errorf("annotation missing: got %v", got)
+	}
+}
+
+func TestApply_Merge_ScalarPropertyValue_ReturnsError(t *testing.T) {
+	// Scalar (non-map) values for property sub-entries are not allowed in semantic
+	// selector patches; the decomposer recurses into property values and rejects
+	// anything that is not a map.
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
+	_, err := p.Apply(testutils.OnePatch("merge",
+		model.Selector{EntityType: "ODataDemo.Product"},
+		map[string]any{"Rating": float64(3)},
+	))
+	if err == nil {
+		t.Fatal("expected error for scalar property value in semantic selector patch, got nil")
+	}
+}
+
+func TestApply_Update_ScalarPropertyValue_ReturnsError(t *testing.T) {
+	// Same rejection applies to update patches.
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
+	_, err := p.Apply(testutils.OnePatch("update",
+		model.Selector{EnumType: "ODataDemo.FileAccess"},
+		map[string]any{"Read": float64(1)},
+	))
+	if err == nil {
+		t.Fatal("expected error for scalar property value in semantic selector patch, got nil")
 	}
 }
 
@@ -490,6 +556,75 @@ func TestApply_Update_EnumTypeAndMember_SimultaneouslyAnnotatesBoth(t *testing.T
 	}
 }
 
+func TestApply_Update_EmptyData_EntityType_RemovesAllAnnotations(t *testing.T) {
+	// update with an empty map removes every @-prefixed key on the target while
+	// leaving structural fields and non-annotation properties intact.
+	base := `{"ODataDemo":{"Product":{"$Kind":"EntityType","@Core.Description":"desc","@Core.Tag":"tag","Price":{"$Type":"Edm.Decimal"}}}}`
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
+		model.Selector{EntityType: "ODataDemo.Product"},
+		map[string]any{},
+	))
+	product := testutils.Get(t, result, "ODataDemo", "Product").(map[string]any)
+	if _, ok := product["@Core.Description"]; ok {
+		t.Error("expected @Core.Description removed by update with empty data")
+	}
+	if _, ok := product["@Core.Tag"]; ok {
+		t.Error("expected @Core.Tag removed by update with empty data")
+	}
+	// structural fields must survive
+	if product["$Kind"] != "EntityType" {
+		t.Errorf("$Kind lost after update with empty data: got %v", product["$Kind"])
+	}
+	if product["Price"] == nil {
+		t.Error("Price property lost after update with empty data")
+	}
+}
+
+func TestApply_Update_EmptyData_EntityType_NoExistingAnnotations_IsNoOp(t *testing.T) {
+	// update with an empty map on a target that has no annotations is a no-op;
+	// the node and all its structural fields must remain unchanged.
+	base := `{"ODataDemo":{"Product":{"$Kind":"EntityType","Price":{"$Type":"Edm.Decimal"}}}}`
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
+		model.Selector{EntityType: "ODataDemo.Product"},
+		map[string]any{},
+	))
+	product := testutils.Get(t, result, "ODataDemo", "Product").(map[string]any)
+	if product["$Kind"] != "EntityType" {
+		t.Errorf("$Kind lost: got %v", product["$Kind"])
+	}
+	if product["Price"] == nil {
+		t.Error("Price property lost")
+	}
+}
+
+func TestApply_Update_EmptyData_EnumTypeMember_RemovesMemberAnnotations(t *testing.T) {
+	// update with an empty map on an enum member selector removes only that
+	// member's MemberName@* annotation keys; sibling members are untouched.
+	base := `{"ODataDemo":{"FileAccess":{"$Kind":"EnumType","Read":1,"Read@Core.Description":"old","Read@Core.Tag":"t","Write":2,"Write@Core.Description":"write"}}}`
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
+		model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
+		map[string]any{},
+	))
+	fa := testutils.Get(t, result, "ODataDemo", "FileAccess").(map[string]any)
+	if _, ok := fa["Read@Core.Description"]; ok {
+		t.Error("expected Read@Core.Description removed")
+	}
+	if _, ok := fa["Read@Core.Tag"]; ok {
+		t.Error("expected Read@Core.Tag removed")
+	}
+	// sibling member and its annotation must survive
+	if fa["Write@Core.Description"] != "write" {
+		t.Errorf("Write@Core.Description must be preserved: got %v", fa["Write@Core.Description"])
+	}
+	// the member value itself must survive
+	if _, ok := fa["Read"]; !ok {
+		t.Error("Read member value must be preserved but is absent")
+	}
+}
+
 func TestApply_Update_Root_ReplacesDocument(t *testing.T) {
 	p := NewOverlayProcessor(model.ResourceDefinition{Content: `{"old":"value"}`, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("update",
@@ -532,6 +667,22 @@ func TestApply_Remove_EntityType_NilData_DeletesEntireNode(t *testing.T) {
 	ns := testutils.Get(t, result, "ODataDemo").(map[string]any)
 	if _, exists := ns["Category"]; exists {
 		t.Error("expected Category deleted, but it still exists")
+	}
+}
+
+func TestApply_Remove_EntityType_NilData_DeletesNodeIncludingAnnotations(t *testing.T) {
+	// remove with nil data on a semantic selector deletes the whole node — annotations
+	// are removed as a consequence of the node being gone, not selectively pruned.
+	base := `{"ODataDemo":{"Product":{"$Kind":"EntityType","@Core.Description":"desc","Price":{"$Type":"Edm.Decimal"}}}}`
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: base, MediaType: "application/json"})
+	result := testutils.ApplyAndParse(t, p, model.OverlayDefinition{
+		Overlay: model.Overlay{Patches: []model.Patch{
+			{Action: "remove", Selector: &model.Selector{EntityType: "ODataDemo.Product"}, Data: nil},
+		}},
+	})
+	ns := testutils.Get(t, result, "ODataDemo").(map[string]any)
+	if _, exists := ns["Product"]; exists {
+		t.Error("expected Product node deleted, but it still exists")
 	}
 }
 

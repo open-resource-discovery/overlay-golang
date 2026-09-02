@@ -135,6 +135,15 @@ func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, 
 		return nil, errors.WrapPrefix(err, "failed to resolve selector %+v", patch.Selector)
 	}
 
+	if _, ok := patch.Data.(map[string]any); patch.Data != nil && !ok {
+		// This is a case where the patch data is not a map[string]any, which is unsupported for semantic selectors
+		return nil, errors.Create(errors.Severity_Warning, "unsupported patch data: %v", patch.Data)
+	}
+
+	if structural := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] == '$' }); len(structural) > 0 {
+		return nil, errors.Create(errors.Severity_Warning, "unsupported patch data keys: %v", structural)
+	}
+
 	// Remove of an enum type member or update shall remove all existing annotations first
 	if patch.Action == "update" || (patch.Action == "remove" && patch.Data == nil && isEnumTypeMemberSelector) {
 		prefix := utils.Ternary(!isEnumTypeMemberSelector, "", patch.Selector.PropertyType) + "@"
@@ -179,7 +188,7 @@ func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, 
 	}
 
 	// Decompose the remaining properties into separate patches, each with a selector that includes the property name
-	for _, property := range utils.Filter(utils.Keys(data), func(s string) bool { return s[0] != '@' && s[0] != '$' }) {
+	for _, property := range utils.Filter(utils.Keys(data), func(s string) bool { return s[0] != '@' }) {
 		decomposed, err := self.decomposeSemanticSelector(content, utils.Clone(patch, func(p *model.Patch) {
 			p.Data = data[property]
 			p.Selector.Parameter = utils.Ternary(len(patch.Selector.Operation) == 0, "", property)
