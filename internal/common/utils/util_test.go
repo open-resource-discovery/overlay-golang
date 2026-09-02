@@ -5,6 +5,17 @@ package utils
 import (
 	"reflect"
 	"testing"
+
+	"github.com/ohler55/ojg/jp"
+)
+
+// Type aliases so tests reference jp frag types without verbose package paths.
+type (
+	jpChild    = jp.Child
+	jpNth      = jp.Nth
+	jpRoot     = jp.Root
+	jpWildcard = jp.Wildcard
+	jpAt       = jp.At
 )
 
 func TestFirst(t *testing.T) {
@@ -407,6 +418,139 @@ func TestDeepMerge(t *testing.T) {
 		arr := got["arr"].([]any)
 		if len(arr) != 3 || arr[0] != 1 || arr[1] != 2 || arr[2] != 3 {
 			t.Errorf("result was affected by mutation of destination: %v", arr)
+		}
+	})
+}
+
+func TestToString(t *testing.T) {
+	t.Run("int", func(t *testing.T) {
+		if got := ToString(42); got != "42" {
+			t.Errorf("got %q, want \"42\"", got)
+		}
+	})
+
+	t.Run("int64", func(t *testing.T) {
+		if got := ToString(int64(99)); got != "99" {
+			t.Errorf("got %q, want \"99\"", got)
+		}
+	})
+
+	t.Run("float64", func(t *testing.T) {
+		if got := ToString(float64(3.14)); got != "3.14" {
+			t.Errorf("got %q, want \"3.14\"", got)
+		}
+	})
+
+	t.Run("string passthrough", func(t *testing.T) {
+		if got := ToString("hello"); got != "hello" {
+			t.Errorf("got %q, want \"hello\"", got)
+		}
+	})
+
+	t.Run("empty string", func(t *testing.T) {
+		if got := ToString(""); got != "" {
+			t.Errorf("got %q, want \"\"", got)
+		}
+	})
+
+	t.Run("bool true", func(t *testing.T) {
+		if got := ToString(true); got != "true" {
+			t.Errorf("got %q, want \"true\"", got)
+		}
+	})
+
+	t.Run("bool false", func(t *testing.T) {
+		if got := ToString(false); got != "false" {
+			t.Errorf("got %q, want \"false\"", got)
+		}
+	})
+
+	t.Run("nil", func(t *testing.T) {
+		if got := ToString(nil); got != "<nil>" {
+			t.Errorf("got %q, want \"<nil>\"", got)
+		}
+	})
+
+	t.Run("map uses default fmt formatting", func(t *testing.T) {
+		got := ToString(map[string]any{"k": 1})
+		if got == "" {
+			t.Error("expected non-empty string for map")
+		}
+	})
+
+	t.Run("slice uses default fmt formatting", func(t *testing.T) {
+		got := ToString([]any{1, 2, 3})
+		if got == "" {
+			t.Error("expected non-empty string for slice")
+		}
+	})
+
+	t.Run("struct uses default fmt formatting", func(t *testing.T) {
+		got := ToString(struct{ X int }{X: 7})
+		if got == "" {
+			t.Error("expected non-empty string for struct")
+		}
+	})
+
+	// ToString is used by SortedLocations to compare jp.Frag values. The frag
+	// types are rune-based aliases, so %v renders their underlying numeric (ASCII)
+	// value. The tests below pin that contract so a change to jp or fmt does not
+	// silently break sort order.
+	t.Run("jp.Child renders as its string value", func(t *testing.T) {
+		// jp.Child is a string alias: %v produces the child key name directly.
+		if got := ToString(jpChild("items")); got != "items" {
+			t.Errorf("got %q, want \"items\"", got)
+		}
+	})
+
+	t.Run("jp.Nth renders as its decimal index", func(t *testing.T) {
+		// jp.Nth is an int alias: %v produces the decimal index.
+		if got := ToString(jpNth(3)); got != "3" {
+			t.Errorf("got %q, want \"3\"", got)
+		}
+	})
+
+	t.Run("jp.Nth zero renders as 0", func(t *testing.T) {
+		if got := ToString(jpNth(0)); got != "0" {
+			t.Errorf("got %q, want \"0\"", got)
+		}
+	})
+
+	t.Run("jp.Root renders as ASCII code of $ (36)", func(t *testing.T) {
+		// jp.Root is a rune alias for '$' (ASCII 36).
+		if got := ToString(jpRoot('$')); got != "36" {
+			t.Errorf("got %q, want \"36\"", got)
+		}
+	})
+
+	t.Run("jp.Wildcard renders as ASCII code of * (42)", func(t *testing.T) {
+		// jp.Wildcard is a rune alias for '*' (ASCII 42).
+		if got := ToString(jpWildcard('*')); got != "42" {
+			t.Errorf("got %q, want \"42\"", got)
+		}
+	})
+
+	t.Run("jp.At renders as ASCII code of @ (64)", func(t *testing.T) {
+		// jp.At is a rune alias for '@' (ASCII 64).
+		if got := ToString(jpAt('@')); got != "64" {
+			t.Errorf("got %q, want \"64\"", got)
+		}
+	})
+
+	t.Run("two distinct jp.Nth values produce different strings", func(t *testing.T) {
+		// SortedLocations relies on ToString to distinguish array indices.
+		a := ToString(jpNth(1))
+		b := ToString(jpNth(9))
+		if a == b {
+			t.Errorf("Nth(1) and Nth(9) produced identical strings: %q", a)
+		}
+	})
+
+	t.Run("two distinct jp.Child values produce different strings", func(t *testing.T) {
+		a := ToString(jpChild("alpha"))
+		b := ToString(jpChild("beta"))
+		if a == b {
+			t.Errorf("Child(alpha) and Child(beta) produced identical strings: %q", a)
 		}
 	})
 }

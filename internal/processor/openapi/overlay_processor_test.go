@@ -867,3 +867,72 @@ func TestDecompose_RecursiveResolveError_Propagates(t *testing.T) {
 		t.Fatal("expected at least one leaf patch to be produced")
 	}
 }
+
+// ---- SortedLocations: multi-element array patches ---------------------------
+
+// inlineDoc is a minimal self-contained OpenAPI-shaped document with a known
+// tags array used for SortedLocations tests. It avoids dependency on petstore
+// fixture data so the tests are stable and predictable.
+const inlineDoc = `{
+  "openapi": "3.0.0",
+  "info": {"title": "Test", "version": "1.0.0"},
+  "tags": [
+    {"name": "alpha"},
+    {"name": "beta"},
+    {"name": "gamma"},
+    {"name": "delta"}
+  ],
+  "paths": {}
+}`
+
+// TestApply_Remove_MultipleArrayElements_ReverseOrder removes elements at
+// indices [1] and [3] from the tags array and asserts that only elements [0]
+// and [2] remain in original order — proving reverse-index removal via
+// SortedLocations prevents off-by-one corruption.
+func TestApply_Remove_MultipleArrayElements_ReverseOrder(t *testing.T) {
+	p := NewOverlayProcessor(model.ResourceDefinition{
+		Content:   inlineDoc,
+		MediaType: "application/json",
+	})
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"remove",
+		model.Selector{JSONPath: "$.tags[1,3]"},
+		nil,
+	))
+
+	tags := result["tags"].([]any)
+	if len(tags) != 2 {
+		t.Fatalf("tags len = %d after removing 2 elements, want 2", len(tags))
+	}
+	if got := tags[0].(map[string]any)["name"]; got != "alpha" {
+		t.Errorf("tags[0].name = %v, want alpha", got)
+	}
+	if got := tags[1].(map[string]any)["name"]; got != "gamma" {
+		t.Errorf("tags[1].name = %v, want gamma", got)
+	}
+}
+
+// TestApply_Merge_WildcardArray_AllElementsUpdated verifies that a wildcard
+// merge patch visits every array element, confirming complete multi-match
+// traversal via SortedLocations.
+func TestApply_Merge_WildcardArray_AllElementsUpdated(t *testing.T) {
+	p := NewOverlayProcessor(model.ResourceDefinition{
+		Content:   inlineDoc,
+		MediaType: "application/json",
+	})
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"merge",
+		model.Selector{JSONPath: "$.tags[*]"},
+		map[string]any{"deprecated": true},
+	))
+
+	tags := result["tags"].([]any)
+	for i, tag := range tags {
+		m := tag.(map[string]any)
+		if m["deprecated"] != true {
+			t.Errorf("tags[%d].deprecated: got %v, want true", i, m["deprecated"])
+		}
+	}
+}

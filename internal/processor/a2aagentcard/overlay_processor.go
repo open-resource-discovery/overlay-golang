@@ -74,7 +74,7 @@ func (self *OverlayProcessor) remove(content map[string]any, expression jp.Expr)
 	}
 
 	return utils.Reduce(
-		expression.Locate(content, 0),
+		jputils.SortedLocations(expression, content),
 		nil,
 		func(result *errors.OverlayError, expression jp.Expr) *errors.OverlayError {
 			return errors.Append(result, utils.Second(expression.Remove(content)))
@@ -108,7 +108,7 @@ func (self *OverlayProcessor) merge(content map[string]any, expression jp.Expr, 
 
 	return utils.Reduce(
 		// allows for create or update behavior here
-		utils.Ternary(!expression.Has(content), []jp.Expr{expression}, expression.Locate(content, 0)),
+		utils.Ternary(!expression.Has(content), []jp.Expr{expression}, jputils.SortedLocations(expression, content)),
 		nil,
 		func(result *errors.OverlayError, expression jp.Expr) *errors.OverlayError {
 			return errors.Append(result, expression.Set(content, utils.DeepMerge(expression.First(content), value)))
@@ -124,7 +124,7 @@ func (self *OverlayProcessor) update(content map[string]any, expression jp.Expr,
 
 	return utils.Reduce(
 		// allows for create or update behavior here
-		utils.Ternary(!expression.Has(content), []jp.Expr{expression}, expression.Locate(content, 0)),
+		utils.Ternary(!expression.Has(content), []jp.Expr{expression}, jputils.SortedLocations(expression, content)),
 		nil,
 		func(result *errors.OverlayError, expression jp.Expr) *errors.OverlayError {
 			return errors.Append(result, expression.Set(content, value))
