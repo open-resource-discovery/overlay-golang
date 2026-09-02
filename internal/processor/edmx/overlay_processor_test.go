@@ -135,6 +135,84 @@ func TestApply_Merge_NoExistingAnnotations_CreatesAnnotationsBlock(t *testing.T)
 	}
 }
 
+func TestApply_Merge_ExplicitZeroArgumentOperationSelectsZeroParameterOverload(t *testing.T) {
+	xml := minimalXML(`
+      <Function Name="Find">
+        <ReturnType Type="Svc.Book"/>
+      </Function>
+      <Function Name="Find">
+        <Parameter Name="id" Type="Edm.String"/>
+        <ReturnType Type="Svc.Book"/>
+      </Function>`)
+	p := newProcessor(t, xml)
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{Operation: "Svc.Find()"},
+				Data:     map[string]any{"@Core.Description": "All books"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result.Content, `Target="Svc.Find()"`) {
+		t.Errorf("expected zero-parameter operation target in output:\n%s", result.Content)
+	}
+}
+
+func TestApply_Merge_OperationSignatureMatchesExactArity(t *testing.T) {
+	xml := minimalXML(`
+      <Function Name="Find">
+        <Parameter Name="id" Type="Edm.String"/>
+        <ReturnType Type="Svc.Book"/>
+      </Function>
+      <Function Name="Find">
+        <Parameter Name="id" Type="Edm.String"/>
+        <Parameter Name="edition" Type="Edm.Int32"/>
+        <ReturnType Type="Svc.Book"/>
+      </Function>`)
+	p := newProcessor(t, xml)
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{Operation: "Svc.Find(Edm.String)"},
+				Data:     map[string]any{"@Core.Description": "One book"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result.Content, `Target="Svc.Find(Edm.String)"`) {
+		t.Errorf("expected exact one-parameter operation target in output:\n%s", result.Content)
+	}
+}
+
+func TestApply_Merge_ExplicitZeroArgumentSignatureDoesNotMatchFunctionImport(t *testing.T) {
+	xml := strings.Replace(
+		minimalXML(""),
+		"</EntityContainer>",
+		`<FunctionImport Name="Ping" Function="Svc.Ping"/></EntityContainer>`,
+		1,
+	)
+	p := newProcessor(t, xml)
+	_, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{Operation: "Svc.Ping()"},
+				Data:     map[string]any{"@Core.Description": "Ping"},
+			}},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected signature-qualified selector not to match FunctionImport")
+	}
+}
+
 func TestApply_Merge_ExistingAnnotations_AppendsToBlock(t *testing.T) {
 	existing := `
       <Annotations Target="Svc.Book">

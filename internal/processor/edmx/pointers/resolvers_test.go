@@ -5,6 +5,7 @@ package pointers
 import (
 	"testing"
 
+	"github.com/ohler55/ojg/jp"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 )
 
@@ -30,8 +31,8 @@ func TestParseQualifiedName_SimpleNameNoParameters(t *testing.T) {
 	if name != "MyType" {
 		t.Errorf("name: got %q, want %q", name, "MyType")
 	}
-	if len(params) != 0 {
-		t.Errorf("parameters: got %v, want []", params)
+	if params != nil {
+		t.Errorf("parameters: got %v, want nil", params)
 	}
 }
 
@@ -57,7 +58,7 @@ func TestParseQualifiedName_ParametersWithSpaces(t *testing.T) {
 
 func TestParseQualifiedName_EmptyParameters(t *testing.T) {
 	_, _, params := resolvers.ParseQualifiedName("NS.Func()")
-	if len(params) != 0 {
+	if params == nil || len(params) != 0 {
 		t.Errorf("parameters: got %v, want []", params)
 	}
 }
@@ -70,8 +71,8 @@ func TestParseQualifiedName_SingleSegmentName(t *testing.T) {
 	if name != "Root" {
 		t.Errorf("name: got %q, want %q", name, "Root")
 	}
-	if len(params) != 0 {
-		t.Errorf("parameters: got %v, want []", params)
+	if params != nil {
+		t.Errorf("parameters: got %v, want nil", params)
 	}
 }
 
@@ -255,15 +256,19 @@ func TestResolveNamespace_ActionParameter(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionParameter("My.Service", "CreateBook", []string{}, "input")
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.ActionParameter("My.Service", "CreateBook", nil, "input"),
+		expressions.ActionParameter("My.Service", "CreateBook", []string{"My.Service.BookInput"}, "input"),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveNamespace(doc, pexpr)
-	if got != "My.Service" {
-		t.Errorf("got %q, want %q", got, "My.Service")
+		got := resolvers.ResolveNamespace(doc, pexpr)
+		if got != "My.Service" {
+			t.Errorf("got %q, want %q", got, "My.Service")
+		}
 	}
 }
 
@@ -274,15 +279,19 @@ func TestResolveNamespace_ActionReturnType(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionReturnType("My.Service", "CreateBook", []string{})
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.ActionReturnType("My.Service", "CreateBook", nil),
+		expressions.ActionReturnType("My.Service", "CreateBook", []string{}),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveNamespace(doc, pexpr)
-	if got != "My.Service" {
-		t.Errorf("got %q, want %q", got, "My.Service")
+		got := resolvers.ResolveNamespace(doc, pexpr)
+		if got != "My.Service" {
+			t.Errorf("got %q, want %q", got, "My.Service")
+		}
 	}
 }
 
@@ -294,15 +303,19 @@ func TestResolveNamespace_FunctionParameter(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionParameter("My.Service", "GetBook", []string{}, "id")
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.FunctionParameter("My.Service", "GetBook", nil, "id"),
+		expressions.FunctionParameter("My.Service", "GetBook", []string{"Edm.Int32"}, "id"),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveNamespace(doc, pexpr)
-	if got != "My.Service" {
-		t.Errorf("got %q, want %q", got, "My.Service")
+		got := resolvers.ResolveNamespace(doc, pexpr)
+		if got != "My.Service" {
+			t.Errorf("got %q, want %q", got, "My.Service")
+		}
 	}
 }
 
@@ -313,15 +326,19 @@ func TestResolveNamespace_FunctionReturnType(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionReturnType("My.Service", "GetBook", []string{})
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.FunctionReturnType("My.Service", "GetBook", nil),
+		expressions.FunctionReturnType("My.Service", "GetBook", []string{}),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveNamespace(doc, pexpr)
-	if got != "My.Service" {
-		t.Errorf("got %q, want %q", got, "My.Service")
+		got := resolvers.ResolveNamespace(doc, pexpr)
+		if got != "My.Service" {
+			t.Errorf("got %q, want %q", got, "My.Service")
+		}
 	}
 }
 
@@ -498,16 +515,20 @@ func TestResolveAnnotationsTarget_Action(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.Action("My.Service", "CreateBook", []string{})
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.Action("My.Service", "CreateBook", nil),
+		expressions.Action("My.Service", "CreateBook", []string{"My.Service.BookInput"}),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
-	// Signature is built from child Parameter nodes: CreateBook(My.Service.BookInput)
-	if got != "My.Service.CreateBook(My.Service.BookInput)" {
-		t.Errorf("got %q, want %q", got, "My.Service.CreateBook(My.Service.BookInput)")
+		got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+		// Signature is built from child Parameter nodes: CreateBook(My.Service.BookInput)
+		if got != "My.Service.CreateBook(My.Service.BookInput)" {
+			t.Errorf("got %q, want %q", got, "My.Service.CreateBook(My.Service.BookInput)")
+		}
 	}
 }
 
@@ -516,15 +537,19 @@ func TestResolveAnnotationsTarget_ActionNoParameters(t *testing.T) {
     <Action Name="Ping"/>
   </Schema>`)
 
-	expr := expressions.Action("My.Service", "Ping", []string{})
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.Action("My.Service", "Ping", nil),
+		expressions.Action("My.Service", "Ping", []string{}),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
-	if got != "My.Service.Ping()" {
-		t.Errorf("got %q, want %q", got, "My.Service.Ping()")
+		got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+		if got != "My.Service.Ping()" {
+			t.Errorf("got %q, want %q", got, "My.Service.Ping()")
+		}
 	}
 }
 
@@ -536,16 +561,20 @@ func TestResolveAnnotationsTarget_Function(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.Function("My.Service", "GetBook", []string{})
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.Function("My.Service", "GetBook", nil),
+		expressions.Function("My.Service", "GetBook", []string{"Edm.Int32"}),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
-	// Signature built from child Parameter nodes: GetBook(Edm.Int32)
-	if got != "My.Service.GetBook(Edm.Int32)" {
-		t.Errorf("got %q, want %q", got, "My.Service.GetBook(Edm.Int32)")
+		got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+		// Signature built from child Parameter nodes: GetBook(Edm.Int32)
+		if got != "My.Service.GetBook(Edm.Int32)" {
+			t.Errorf("got %q, want %q", got, "My.Service.GetBook(Edm.Int32)")
+		}
 	}
 }
 
@@ -556,15 +585,19 @@ func TestResolveAnnotationsTarget_ActionParameter(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionParameter("My.Service", "CreateBook", []string{}, "input")
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.ActionParameter("My.Service", "CreateBook", nil, "input"),
+		expressions.ActionParameter("My.Service", "CreateBook", []string{"My.Service.BookInput"}, "input"),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
-	if got != "My.Service.CreateBook(My.Service.BookInput)/input" {
-		t.Errorf("got %q, want %q", got, "My.Service.CreateBook(My.Service.BookInput)/input")
+		got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+		if got != "My.Service.CreateBook(My.Service.BookInput)/input" {
+			t.Errorf("got %q, want %q", got, "My.Service.CreateBook(My.Service.BookInput)/input")
+		}
 	}
 }
 
@@ -576,15 +609,19 @@ func TestResolveAnnotationsTarget_ActionReturnType(t *testing.T) {
     </Action>
   </Schema>`)
 
-	expr := expressions.ActionReturnType("My.Service", "CreateBook", []string{})
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.ActionReturnType("My.Service", "CreateBook", nil),
+		expressions.ActionReturnType("My.Service", "CreateBook", []string{"My.Service.BookInput"}),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
-	if got != "My.Service.CreateBook(My.Service.BookInput)/$ReturnType" {
-		t.Errorf("got %q, want %q", got, "My.Service.CreateBook(My.Service.BookInput)/$ReturnType")
+		got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+		if got != "My.Service.CreateBook(My.Service.BookInput)/$ReturnType" {
+			t.Errorf("got %q, want %q", got, "My.Service.CreateBook(My.Service.BookInput)/$ReturnType")
+		}
 	}
 }
 
@@ -596,15 +633,19 @@ func TestResolveAnnotationsTarget_FunctionParameter(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionParameter("My.Service", "GetBook", []string{}, "id")
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.FunctionParameter("My.Service", "GetBook", nil, "id"),
+		expressions.FunctionParameter("My.Service", "GetBook", []string{"Edm.Int32"}, "id"),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
-	if got != "My.Service.GetBook(Edm.Int32)/id" {
-		t.Errorf("got %q, want %q", got, "My.Service.GetBook(Edm.Int32)/id")
+		got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+		if got != "My.Service.GetBook(Edm.Int32)/id" {
+			t.Errorf("got %q, want %q", got, "My.Service.GetBook(Edm.Int32)/id")
+		}
 	}
 }
 
@@ -616,14 +657,18 @@ func TestResolveAnnotationsTarget_FunctionReturnType(t *testing.T) {
     </Function>
   </Schema>`)
 
-	expr := expressions.FunctionReturnType("My.Service", "GetBook", []string{})
-	pexpr, found, err := xml2json.Pinpoint(doc, expr)
-	if !found || err != nil {
-		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
-	}
+	for _, candidate := range []jp.Expr{
+		expressions.FunctionReturnType("My.Service", "GetBook", nil),
+		expressions.FunctionReturnType("My.Service", "GetBook", []string{"Edm.Int32"}),
+	} {
+		pexpr, found, err := xml2json.Pinpoint(doc, candidate)
+		if !found || err != nil {
+			t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+		}
 
-	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
-	if got != "My.Service.GetBook(Edm.Int32)/$ReturnType" {
-		t.Errorf("got %q, want %q", got, "My.Service.GetBook(Edm.Int32)/$ReturnType")
+		got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+		if got != "My.Service.GetBook(Edm.Int32)/$ReturnType" {
+			t.Errorf("got %q, want %q", got, "My.Service.GetBook(Edm.Int32)/$ReturnType")
+		}
 	}
 }

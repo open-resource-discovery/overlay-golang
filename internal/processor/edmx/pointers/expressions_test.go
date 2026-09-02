@@ -99,20 +99,54 @@ func TestExpressions_EnumType_WithMember(t *testing.T) {
 // ---- Action -----------------------------------------------------------------
 
 func TestExpressions_Action_WithoutParameters(t *testing.T) {
-	expr := expressions.Action("CatalogService", "submitOrder", []string{})
+	expr := expressions.Action("CatalogService", "submitOrder", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder')]`)
+}
+
+func TestExpressions_Action_WithEmptyParameters(t *testing.T) {
+	expr := expressions.Action("CatalogService", "submitOrder", []string{})
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder' && count(@.nodes[?(@.name == 'Parameter')]) == 0)]`)
+}
+
+func TestExpressions_Action_WithParameters(t *testing.T) {
+	expr := expressions.Action("CatalogService", "submitOrder", []string{"Edm.Int32"})
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder' && count(@.nodes[?(@.name == 'Parameter')]) == 1 && @.nodes[0].attributes.Type == 'Edm.Int32')]`)
 }
 
 // ---- Function ---------------------------------------------------------------
 
 func TestExpressions_Function_WithoutParameters(t *testing.T) {
-	expr := expressions.Function("CatalogService", "getBooks", []string{})
+	expr := expressions.Function("CatalogService", "getBooks", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBooks')]`)
 
 	node := resolve(expr)
 	if node.Name() != "Function" || node.Attribute("Name") != "getBooks" {
+		t.Errorf("expected Function getBooks, got name=%s attr=%s", node.Name(), node.Attribute("Name"))
+	}
+}
+
+func TestExpressions_Function_WithEmptyParameters(t *testing.T) {
+	expr := expressions.Function("CatalogService", "getBooks", []string{})
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBooks' && count(@.nodes[?(@.name == 'Parameter')]) == 0)]`)
+
+	node := resolve(expr)
+	if node.Name() != "Function" || node.Attribute("Name") != "getBooks" {
+		t.Errorf("expected Function getBooks, got name=%s attr=%s", node.Name(), node.Attribute("Name"))
+	}
+}
+
+func TestExpressions_Function_WithParameters(t *testing.T) {
+	expr := expressions.Function("CatalogService", "getBookById", []string{"Edm.Int32"})
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBookById' && count(@.nodes[?(@.name == 'Parameter')]) == 1 && @.nodes[0].attributes.Type == 'Edm.Int32')]`)
+
+	node := resolve(expr)
+	if node.Name() != "Function" || node.Attribute("Name") != "getBookById" {
 		t.Errorf("expected Function getBooks, got name=%s attr=%s", node.Name(), node.Attribute("Name"))
 	}
 }
@@ -168,23 +202,47 @@ func TestExpressions_FunctionImport_getBookById(t *testing.T) {
 // ---- ActionParameter --------------------------------------------------------
 
 func TestExpressions_ActionParameter_WithoutParameters(t *testing.T) {
-	expr := expressions.ActionParameter("CatalogService", "submitOrder", []string{}, "orderId")
+	expr := expressions.ActionParameter("CatalogService", "submitOrder", nil, "orderId")
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder')].nodes[?(@.name == 'Parameter' && @.attributes.Name == 'orderId')]`)
+}
+
+func TestExpressions_ActionParameter_WithEmptyParameters(t *testing.T) {
+	expr := expressions.ActionParameter("CatalogService", "submitOrder", []string{}, "orderId")
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder' && count(@.nodes[?(@.name == 'Parameter')]) == 0)].nodes[?(@.name == 'Parameter' && @.attributes.Name == 'orderId')]`)
+}
+
+func TestExpressions_ActionParameter_WithParameters(t *testing.T) {
+	expr := expressions.ActionParameter("CatalogService", "submitOrder", []string{"Edm.Int32"}, "orderId")
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder' && count(@.nodes[?(@.name == 'Parameter')]) == 1 && @.nodes[0].attributes.Type == 'Edm.Int32')].nodes[?(@.name == 'Parameter' && @.attributes.Name == 'orderId')]`)
 }
 
 // ---- ActionReturnType -------------------------------------------------------
 
 func TestExpressions_ActionReturnType_WithoutParameters(t *testing.T) {
-	expr := expressions.ActionReturnType("CatalogService", "submitOrder", []string{})
+	expr := expressions.ActionReturnType("CatalogService", "submitOrder", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder')].nodes[?(@.name == 'ReturnType')]`)
+}
+
+func TestExpressions_ActionReturnType_WithEmptyParameters(t *testing.T) {
+	expr := expressions.ActionReturnType("CatalogService", "submitOrder", []string{})
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder' && count(@.nodes[?(@.name == 'Parameter')]) == 0)].nodes[?(@.name == 'ReturnType')]`)
+}
+
+func TestExpressions_ActionReturnType_WithParameters(t *testing.T) {
+	expr := expressions.ActionReturnType("CatalogService", "submitOrder", []string{"Edm.Int32"})
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Action' && @.attributes.Name == 'submitOrder' && count(@.nodes[?(@.name == 'Parameter')]) == 1 && @.nodes[0].attributes.Type == 'Edm.Int32')].nodes[?(@.name == 'ReturnType')]`)
 }
 
 // ---- FunctionParameter ------------------------------------------------------
 
 func TestExpressions_FunctionParameter_WithoutParameters(t *testing.T) {
-	expr := expressions.FunctionParameter("CatalogService", "getBookPriorityById", []string{}, "id")
+	expr := expressions.FunctionParameter("CatalogService", "getBookPriorityById", nil, "id")
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBookPriorityById')].nodes[?(@.name == 'Parameter' && @.attributes.Name == 'id')]`)
 
@@ -194,10 +252,21 @@ func TestExpressions_FunctionParameter_WithoutParameters(t *testing.T) {
 	}
 }
 
+func TestExpressions_FunctionParameter_WithParameters(t *testing.T) {
+	expr := expressions.FunctionParameter("CatalogService", "getBookPriorityById", []string{"Edm.Int32"}, "id")
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBookPriorityById' && count(@.nodes[?(@.name == 'Parameter')]) == 1 && @.nodes[0].attributes.Type == 'Edm.Int32')].nodes[?(@.name == 'Parameter' && @.attributes.Name == 'id')]`)
+
+	node := resolve(expr)
+	if node.Name() != "Parameter" || node.Attribute("Name") != "id" {
+		t.Errorf("expected Parameter id, got name=%s attr=%s", node.Name(), node.Attribute("Name"))
+	}
+}
+
 // ---- FunctionReturnType -----------------------------------------------------
 
-func TestExpressions_FunctionReturnType_getBooks(t *testing.T) {
-	expr := expressions.FunctionReturnType("CatalogService", "getBooks", []string{})
+func TestExpressions_FunctionReturnType_WithoutParameters(t *testing.T) {
+	expr := expressions.FunctionReturnType("CatalogService", "getBooks", nil)
 
 	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBooks')].nodes[?(@.name == 'ReturnType')]`)
 
@@ -207,10 +276,21 @@ func TestExpressions_FunctionReturnType_getBooks(t *testing.T) {
 	}
 }
 
-func TestExpressions_FunctionReturnType_getBookPriorityById(t *testing.T) {
-	expr := expressions.FunctionReturnType("CatalogService", "getBookPriorityById", []string{})
+func TestExpressions_FunctionReturnType_WithEmptyParameters(t *testing.T) {
+	expr := expressions.FunctionReturnType("CatalogService", "getBooks", []string{})
 
-	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBookPriorityById')].nodes[?(@.name == 'ReturnType')]`)
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBooks' && count(@.nodes[?(@.name == 'Parameter')]) == 0)].nodes[?(@.name == 'ReturnType')]`)
+
+	node := resolve(expr)
+	if node.Name() != "ReturnType" {
+		t.Errorf("expected ReturnType, got %s", node.Name())
+	}
+}
+
+func TestExpressions_FunctionReturnType_WithParameters(t *testing.T) {
+	expr := expressions.FunctionReturnType("CatalogService", "getBookById", []string{"Edm.Int32"})
+
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'Function' && @.attributes.Name == 'getBookById' && count(@.nodes[?(@.name == 'Parameter')]) == 1 && @.nodes[0].attributes.Type == 'Edm.Int32')].nodes[?(@.name == 'ReturnType')]`)
 
 	node := resolve(expr)
 	if node.Name() != "ReturnType" {

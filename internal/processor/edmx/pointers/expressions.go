@@ -48,11 +48,23 @@ var expressions = (func() *struct {
 			jputils.And(
 				jputils.Eq("@.name", "Action"),
 				jputils.Eq("@.attributes.Name", name),
-				utils.Map(
-					parameters,
-					func(idx int, parameter string) *jp.Equation {
-						return jputils.Eq(fmt.Sprintf("@.nodes.[%d].attributes.Type", idx), parameter)
-					},
+				utils.Ternary(
+					parameters == nil,
+					[]*jp.Equation{},
+					append(
+						[]*jp.Equation{
+							jp.Eq(
+								jp.Count(jputils.Expr("@", "nodes", jputils.Eq("@.name", "Parameter"))),
+								jp.ConstInt(int64(len(parameters))),
+							),
+						},
+						utils.Map(
+							parameters,
+							func(idx int, parameter string) *jp.Equation {
+								return jputils.Eq(fmt.Sprintf("@.nodes.[%d].attributes.Type", idx), parameter)
+							},
+						)...,
+					),
 				)...,
 			),
 		)
@@ -64,11 +76,23 @@ var expressions = (func() *struct {
 			jputils.And(
 				jputils.Eq("@.name", "Function"),
 				jputils.Eq("@.attributes.Name", name),
-				utils.Map(
-					parameters,
-					func(idx int, parameter string) *jp.Equation {
-						return jputils.Eq(fmt.Sprintf("@.nodes.[%d].attributes.Type", idx), parameter)
-					},
+				utils.Ternary(
+					parameters == nil,
+					[]*jp.Equation{},
+					append(
+						[]*jp.Equation{
+							jp.Eq(
+								jp.Count(jputils.Expr("@", "nodes", jputils.Eq("@.name", "Parameter"))),
+								jp.ConstInt(int64(len(parameters))),
+							),
+						},
+						utils.Map(
+							parameters,
+							func(idx int, parameter string) *jp.Equation {
+								return jputils.Eq(fmt.Sprintf("@.nodes.[%d].attributes.Type", idx), parameter)
+							},
+						)...,
+					),
 				)...,
 			),
 		)
