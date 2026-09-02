@@ -1,5 +1,11 @@
 package model
 
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
+
 // SystemInstance represents a concrete, running instance of a system type
 // (typically a tenant).
 type SystemInstance struct {
@@ -13,4 +19,8 @@ type SystemInstance struct {
 
 	// CorrelationIDs link this instance to external systems of record.
 	CorrelationIDs []string `json:"correlationIds,omitempty"`
+}
+
+func (self SystemInstance) String() string {
+	return string(utils.First(json.Marshal(self)))
 }

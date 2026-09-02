@@ -1,5 +1,11 @@
 package model
 
+import (
+	"encoding/json"
+
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
+)
+
 // ResourceDefinition represents an ORD API resource definition file
 // (e.g. OpenAPI, AsyncAPI, OData CSDL, MCP/A2A Agent Card).
 type ResourceDefinition struct {
@@ -14,4 +20,8 @@ type ResourceDefinition struct {
 	DescribedSystemType     *SystemType
 	DescribedSystemVersion  *SystemVersion
 	DescribedSystemInstance *SystemInstance
+}
+
+func (self ResourceDefinition) String() string {
+	return string(utils.First(json.Marshal(self)))
 }
