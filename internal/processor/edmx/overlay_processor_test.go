@@ -48,6 +48,16 @@ func TestNewOverlayProcessor_InvalidContent_ReturnsError(t *testing.T) {
 	NewOverlayProcessor(model.ResourceDefinition{Content: "not xml"})
 }
 
+func TestApply_EDMX_ODataV2_ReturnsError(t *testing.T) {
+	defer testutils.AssertPanics(t, "expected error for unsupported EDMX version")
+
+	NewOverlayProcessor(model.ResourceDefinition{
+		DefinitionType: "edmx",
+		MediaType:      "application/xml",
+		Content:        `<edmx:Edmx Version="1.0" />`,
+	})
+}
+
 // ─── Apply — result shape ─────────────────────────────────────────────────────
 
 func TestApply_SetsResultPurpose(t *testing.T) {

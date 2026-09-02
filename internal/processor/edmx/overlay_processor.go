@@ -19,9 +19,16 @@ type OverlayProcessor struct {
 }
 
 func NewOverlayProcessor(definition model.ResourceDefinition) *OverlayProcessor {
+	document := marshaller.MustUnmarshal("application/xml", definition.Content).(xml2json.Document)
+	edmx := jputils.Expr("$", "nodes", jputils.Eq("@.name", "edmx:Edmx")).First(document)
+
+	if edmx == nil || !utils.CanCast[xml2json.Node](edmx) || edmx.(xml2json.Node).Attribute("Version") != "4.0" {
+		panic(errors.Create(errors.Severity_Error, "applying an ORD Overlay to EDMX is only supported for version 4.0"))
+	}
+
 	return &OverlayProcessor{
 		definition: definition,
-		content:    marshaller.MustUnmarshal("application/xml", definition.Content).(xml2json.Document),
+		content:    document,
 	}
 }
 
