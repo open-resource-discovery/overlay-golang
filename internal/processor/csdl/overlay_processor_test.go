@@ -676,3 +676,70 @@ func TestApply_InvalidJSONPath_ReturnsError(t *testing.T) {
 		t.Fatal("expected error for invalid JSONPath, got nil")
 	}
 }
+
+// ---- SortedLocations: multi-element array patches ---------------------------
+
+// csdlInlineDoc is a minimal CSDL-shaped document with a known servers array
+// used for SortedLocations tests. CSDL fixture has no multi-element arrays, so
+// we use a self-contained document.
+const csdlInlineDoc = `{
+  "$Version": "4.0",
+  "servers": [
+    {"url": "https://a.example.com"},
+    {"url": "https://b.example.com"},
+    {"url": "https://c.example.com"},
+    {"url": "https://d.example.com"}
+  ]
+}`
+
+// TestApply_Remove_MultipleArrayElements_ReverseOrder removes elements at
+// indices [1] and [3] from the servers array and asserts that only elements [0]
+// and [2] remain in original order — proving reverse-index removal via
+// SortedLocations prevents off-by-one corruption.
+func TestApply_Remove_MultipleArrayElements_ReverseOrder(t *testing.T) {
+	p := NewOverlayProcessor(model.ResourceDefinition{
+		Content:   csdlInlineDoc,
+		MediaType: "application/json",
+	})
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"remove",
+		model.Selector{JSONPath: "$.servers[1,3]"},
+		nil,
+	))
+
+	servers := result["servers"].([]any)
+	if len(servers) != 2 {
+		t.Fatalf("servers len = %d after removing 2 elements, want 2", len(servers))
+	}
+	if got := servers[0].(map[string]any)["url"]; got != "https://a.example.com" {
+		t.Errorf("servers[0].url = %v, want https://a.example.com", got)
+	}
+	if got := servers[1].(map[string]any)["url"]; got != "https://c.example.com" {
+		t.Errorf("servers[1].url = %v, want https://c.example.com", got)
+	}
+}
+
+// TestApply_Merge_WildcardArray_AllElementsUpdated verifies that a wildcard
+// merge patch visits every array element, confirming complete multi-match
+// traversal via SortedLocations.
+func TestApply_Merge_WildcardArray_AllElementsUpdated(t *testing.T) {
+	p := NewOverlayProcessor(model.ResourceDefinition{
+		Content:   csdlInlineDoc,
+		MediaType: "application/json",
+	})
+
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch(
+		"merge",
+		model.Selector{JSONPath: "$.servers[*]"},
+		map[string]any{"active": true},
+	))
+
+	servers := result["servers"].([]any)
+	for i, s := range servers {
+		m := s.(map[string]any)
+		if m["active"] != true {
+			t.Errorf("servers[%d].active: got %v, want true", i, m["active"])
+		}
+	}
+}

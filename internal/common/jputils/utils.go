@@ -2,8 +2,10 @@ package jputils
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -112,4 +114,24 @@ func Pinpoint(document any, expression jp.Expr) (jp.Expr, bool, *errors.OverlayE
 	}
 
 	return located[0], true, nil
+}
+
+func SortedLocations(expression jp.Expr, content any) []jp.Expr {
+	expressions := expression.Locate(content, 0)
+
+	slices.SortStableFunc(expressions, func(left jp.Expr, right jp.Expr) int {
+		for idx := 0; idx < int(math.Max(float64(len(left)), float64(len(right)))); idx++ {
+			if idx >= len(left) || idx >= len(right) {
+				return len(right) - len(left)
+			}
+
+			if cmp := strings.Compare(utils.ToString(right[idx]), utils.ToString(left[idx])); cmp != 0 {
+				return cmp
+			}
+		}
+
+		return 0
+	})
+
+	return expressions
 }

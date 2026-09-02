@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+
 	"github.com/huandu/go-clone"
 )
 
@@ -72,4 +74,8 @@ func DeepMerge(destination any, source any) any {
 	}
 
 	return DeepMerge(SafeCast[map[string]any](destination), SafeCast[map[string]any](source))
+}
+
+func ToString(value any) string {
+	return fmt.Sprintf("%v", value)
 }
