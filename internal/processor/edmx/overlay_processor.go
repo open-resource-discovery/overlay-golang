@@ -113,7 +113,10 @@ func (self *OverlayProcessor) remove(content xml2json.Document, pointer Pointer,
 		return xml2json.PruneNodes(
 			content,
 			expression,
-			func(node xml2json.Node) bool { return !utils.ContainsKey(data, "@"+node.Attribute("Term")) },
+			func(node xml2json.Node) bool {
+				// remove all annotations in case of data == nil
+				return data != nil && !utils.ContainsKey(data, "@"+node.Attribute("Term"))
+			},
 			true,
 		)
 	}

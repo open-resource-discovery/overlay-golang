@@ -14,12 +14,21 @@ func (self PatchDecomposer) Decompose(patch model.Patch) []model.Patch {
 
 	result := make([]model.Patch, 0)
 	data := utils.SafeCast[map[string]any](patch.Data)
+	annotations := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] == '@' })
+	properties := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] != '@' && s[0] != '$' })
 
-	if annotations := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] == '@' }); len(annotations) > 0 {
+	if len(annotations) > 0 {
 		result = append(result, utils.Clone(patch, func(p *model.Patch) { p.Data = utils.Projection(data, annotations) }))
 	}
 
-	if properties := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] != '@' && s[0] != '$' }); len(properties) > 0 {
+	if patch.Action == "update" && len(annotations) == 0 {
+		result = append(result, utils.Clone(patch, func(p *model.Patch) {
+			p.Data = nil
+			p.Action = "remove"
+		}))
+	}
+
+	if len(properties) > 0 {
 		result = append(
 			result,
 			utils.Map(
