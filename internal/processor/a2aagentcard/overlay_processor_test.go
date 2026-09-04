@@ -714,7 +714,7 @@ func TestDecompose_NilData_ReturnsOriginalPatchUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{patch})
+	testutils.AssertContainsInOrder(t, result, []model.Patch{patch})
 }
 
 func TestDecompose_MergeAction_ReturnsOriginalPatchUnchanged(t *testing.T) {
@@ -730,7 +730,7 @@ func TestDecompose_MergeAction_ReturnsOriginalPatchUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{patch})
+	testutils.AssertContainsInOrder(t, result, []model.Patch{patch})
 }
 
 func TestDecompose_UpdateAction_ReturnsOriginalPatchUnchanged(t *testing.T) {
@@ -746,7 +746,7 @@ func TestDecompose_UpdateAction_ReturnsOriginalPatchUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{patch})
+	testutils.AssertContainsInOrder(t, result, []model.Patch{patch})
 }
 
 func TestDecompose_MergeAction_WithRootSelector_ReturnsOriginalPatchUnchanged(t *testing.T) {
@@ -762,7 +762,7 @@ func TestDecompose_MergeAction_WithRootSelector_ReturnsOriginalPatchUnchanged(t 
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{patch})
+	testutils.AssertContainsInOrder(t, result, []model.Patch{patch})
 }
 
 func TestDecompose_MergeAction_EmptyData_ReturnsOriginalPatchUnchanged(t *testing.T) {
@@ -778,7 +778,7 @@ func TestDecompose_MergeAction_EmptyData_ReturnsOriginalPatchUnchanged(t *testin
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{patch})
+	testutils.AssertContainsInOrder(t, result, []model.Patch{patch})
 }
 
 func TestDecompose_MergeAction_WithOperationSelector_ReturnsOriginalPatchUnchanged(t *testing.T) {
@@ -794,7 +794,7 @@ func TestDecompose_MergeAction_WithOperationSelector_ReturnsOriginalPatchUnchang
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{patch})
+	testutils.AssertContainsInOrder(t, result, []model.Patch{patch})
 }
 
 // ---- remove: empty / scalar-only data ---------------------------------------
@@ -861,7 +861,7 @@ func TestDecompose_RemoveAction_NilValue_ProducesLeafPatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{
+	testutils.AssertContainsInOrder(t, result, []model.Patch{
 		{
 			Action:      "remove",
 			Description: "test-description",
@@ -891,7 +891,7 @@ func TestDecompose_RemoveAction_MultipleNilValues_ProducesOneLeafPatchPerKey(t *
 			Description: "test-description",
 			Tags:        []string{"tag-a", "tag-b"},
 			Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
-			Selector:    &model.Selector{JSONPath: "$.name"},
+			Selector:    &model.Selector{JSONPath: "$.version"},
 			Data:        nil,
 		},
 		{
@@ -899,7 +899,7 @@ func TestDecompose_RemoveAction_MultipleNilValues_ProducesOneLeafPatchPerKey(t *
 			Description: "test-description",
 			Tags:        []string{"tag-a", "tag-b"},
 			Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
-			Selector:    &model.Selector{JSONPath: "$.version"},
+			Selector:    &model.Selector{JSONPath: "$.name"},
 			Data:        nil,
 		},
 	})
@@ -921,7 +921,7 @@ func TestDecompose_RemoveAction_MixedNilAndScalar_OnlyNilProducesPatches(t *test
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{
+	testutils.AssertContainsInOrder(t, result, []model.Patch{
 		{
 			Action:      "remove",
 			Description: "test-description",
@@ -952,7 +952,7 @@ func TestDecompose_RemoveAction_MapValue_RecursesAndProducesLeafPatch(t *testing
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{
+	testutils.AssertContainsInOrder(t, result, []model.Patch{
 		{
 			Action:      "remove",
 			Description: "test-description",
@@ -991,7 +991,7 @@ func TestDecompose_RemoveAction_DeeplyNestedMapValue_ProducesLeafAtCorrectPath(t
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{
+	testutils.AssertContainsInOrder(t, result, []model.Patch{
 		{
 			Action:      "remove",
 			Description: "test-description",
@@ -1018,7 +1018,7 @@ func TestDecompose_RemoveAction_PatchFields_PreservedInProducedPatches(t *testin
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{
+	testutils.AssertContainsInOrder(t, result, []model.Patch{
 		{
 			Action:      "remove",
 			Description: "test-description",
@@ -1078,7 +1078,7 @@ func TestDecompose_UnknownAction_WithNilValue_DecomposesLikeRemove(t *testing.T)
 	if err != nil {
 		t.Fatalf("Decompose: %v", err)
 	}
-	testutils.AssertContainsInAnyOrder(t, result, []model.Patch{
+	testutils.AssertContainsInOrder(t, result, []model.Patch{
 		{
 			Action:      "upsert",
 			Description: "test-description",

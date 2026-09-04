@@ -2,38 +2,30 @@ package edmx
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
-	xml2json "github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 )
 
 type AnnotationConverter byte
 
 func (self AnnotationConverter) Convert(name string, value any) xml2json.Node {
-	switch value.(type) {
-	case []any:
-		return xml2json.NewElementNode(
-			"Annotation",
-			[]xml2json.Node{self.asCollectionElement(value.([]any))},
-			xml2json.NewAttributes("Term", name[1:]),
-		)
-	case map[string]any:
-		return xml2json.NewElementNode(
-			"Annotation",
-			[]xml2json.Node{self.asRecordElement(value.(map[string]any))},
-			xml2json.NewAttributes("Term", name[1:]),
-		)
-	default:
-		return xml2json.NewElementNode(
-			"Annotation",
-			[]xml2json.Node{},
-			xml2json.NewAttributes("Term", name[1:], self.resolveTypeName(value), fmt.Sprint(value)),
-		)
-	}
+	return xml2json.NewElementNode(
+		"Annotation",
+		self.asChildren(value),
+		self.asAttributes(
+			[]string{"Term", utils.First(strings.Cut(name[1:], "#"))},
+			[]string{"Qualifier", utils.Second(strings.Cut(name[1:], "#"))},
+			[]string{self.resolveTypeName(value), fmt.Sprint(value)},
+		),
+	)
 }
 
 func (self AnnotationConverter) resolveTypeName(value any) string {
 	switch value.(type) {
+	case []any, map[string]any:
+		return ""
 	case bool:
 		return "Bool"
 	case string:
@@ -44,6 +36,17 @@ func (self AnnotationConverter) resolveTypeName(value any) string {
 		return "Int"
 	default:
 		panic(fmt.Sprintf("unsupported value type: %T", value))
+	}
+}
+
+func (self AnnotationConverter) asChildren(value any) []xml2json.Node {
+	switch value.(type) {
+	case []any:
+		return []xml2json.Node{self.asCollectionElement(value.([]any))}
+	case map[string]any:
+		return []xml2json.Node{self.asRecordElement(value.(map[string]any))}
+	default:
+		return []xml2json.Node{}
 	}
 }
 
@@ -81,28 +84,26 @@ func (self AnnotationConverter) asRecordElement(data map[string]any) xml2json.No
 	)
 }
 
-func (self AnnotationConverter) asPropertyValueElement(key string, value any) xml2json.Node {
-	switch value.(type) {
-	case []any:
-		return xml2json.NewElementNode(
-			"PropertyValue",
-			[]xml2json.Node{self.asCollectionElement(value.([]any))},
-			xml2json.NewAttributes("Property", key),
-		)
-	case map[string]any:
-		return xml2json.NewElementNode(
-			"PropertyValue",
-			[]xml2json.Node{self.asRecordElement(value.(map[string]any))},
-			xml2json.NewAttributes("Property", key),
-		)
-	default:
-		return xml2json.NewElementNode(
-			"PropertyValue",
-			[]xml2json.Node{},
-			xml2json.NewAttributes(
-				"Property", key,
-				self.resolveTypeName(value), fmt.Sprint(value),
+func (self AnnotationConverter) asAttributes(parts ...[]string) xml2json.Attributes {
+	return xml2json.NewAttributes(
+		utils.Flatten(
+			utils.Filter(
+				parts,
+				func(parts []string) bool {
+					return len(parts[0]) > 0 && len(parts[1]) > 0
+				},
 			),
-		)
-	}
+		)...,
+	)
+}
+
+func (self AnnotationConverter) asPropertyValueElement(key string, value any) xml2json.Node {
+	return xml2json.NewElementNode(
+		"PropertyValue",
+		self.asChildren(value),
+		self.asAttributes(
+			[]string{"Property", key},
+			[]string{self.resolveTypeName(value), fmt.Sprint(value)},
+		),
+	)
 }
