@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
-	xml2json "github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
 

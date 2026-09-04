@@ -38,6 +38,20 @@ func AssertContainsInAnyOrder[E any](t *testing.T, result, want []E) {
 	}
 }
 
+func AssertContainsInOrder[E any](t *testing.T, result, want []E) {
+	t.Helper()
+
+	if len(result) != len(want) {
+		t.Fatalf("expected %d elements, got %d", len(want), len(result))
+	}
+
+	for i, wanted := range want {
+		if !reflect.DeepEqual(result[i], wanted) {
+			t.Errorf("element at index %d mismatch:\n  want: %+v\n  got:  %+v", i, wanted, result[i])
+		}
+	}
+}
+
 func AssertExpr(t *testing.T, e jp.Expr, wanted string) {
 	t.Helper()
 	if e.String() != wanted {

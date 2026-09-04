@@ -60,11 +60,32 @@ func TestExpressions_EntityType_WithoutProperty(t *testing.T) {
 func TestExpressions_EntityType_WithProperty(t *testing.T) {
 	expr := expressions.EntityType("CatalogService", "Books", "title")
 
-	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'EntityType' && @.attributes.Name == 'Books')].nodes[?(@.name == 'Property' && @.attributes.Name == 'title')]`)
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'EntityType' && @.attributes.Name == 'Books')].nodes[?(@.attributes.Name == 'title' && @.name == 'Property' || @.name == 'NavigationProperty')]`)
 
 	node := resolve(expr)
 	if node.Name() != "Property" || node.Attribute("Name") != "title" {
 		t.Errorf("expected Property title, got name=%s attr=%s", node.Name(), node.Attribute("Name"))
+	}
+}
+
+func TestExpressions_EntityType_WithNavigationProperty(t *testing.T) {
+	doc := edmxDoc(`<Schema Namespace="My.Service" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+    <EntityType Name="Book">
+      <NavigationProperty Name="author" Type="My.Service.Author"/>
+      <NavigationProperty Name="publisher" Type="My.Service.Publisher"/>
+    </EntityType>
+  </Schema>`)
+
+	expr := expressions.EntityType("My.Service", "Book", "author")
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'My.Service')].nodes[?(@.name == 'EntityType' && @.attributes.Name == 'Book')].nodes[?(@.attributes.Name == 'author' && @.name == 'Property' || @.name == 'NavigationProperty')]`)
+
+	matches := expr.Get(doc)
+	if len(matches) != 1 {
+		t.Fatalf("matches = %d, want 1", len(matches))
+	}
+	node := matches[0].(xml2json.Node)
+	if node.Name() != "NavigationProperty" || node.Attribute("Name") != "author" {
+		t.Errorf("expected NavigationProperty author, got name=%s attr=%s", node.Name(), node.Attribute("Name"))
 	}
 }
 
