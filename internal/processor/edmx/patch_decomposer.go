@@ -18,6 +18,17 @@ func (self PatchDecomposer) Decompose(patch model.Patch) []model.Patch {
 	properties := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] != '@' && s[0] != '$' })
 
 	if len(annotations) > 0 {
+		if patch.Action == "merge" {
+			// Implement replace behavior for annotations by removing them first and then adding them back with the new values.
+			result = append(result, utils.Clone(patch, func(p *model.Patch) {
+				p.Action = "remove"
+				p.Data = utils.Remap(
+					utils.Projection(data, annotations),
+					func(key string, _ any) (string, any) { return key, nil },
+				)
+			}))
+		}
+
 		result = append(result, utils.Clone(patch, func(p *model.Patch) { p.Data = utils.Projection(data, annotations) }))
 	}
 
@@ -31,15 +42,17 @@ func (self PatchDecomposer) Decompose(patch model.Patch) []model.Patch {
 	if len(properties) > 0 {
 		result = append(
 			result,
-			utils.Map(
-				properties,
-				func(_ int, property string) model.Patch {
-					return utils.Clone(patch, func(p *model.Patch) {
-						p.Data = data[property]
-						p.Selector.Parameter = utils.Ternary(len(patch.Selector.Operation) == 0, "", property)
-						p.Selector.PropertyType = utils.Ternary(len(patch.Selector.Operation) == 0, property, "")
-					})
-				},
+			utils.Flatten(
+				utils.Map(
+					utils.Sort(properties),
+					func(_ int, property string) []model.Patch {
+						return self.Decompose(utils.Clone(patch, func(p *model.Patch) {
+							p.Data = data[property]
+							p.Selector.Parameter = utils.Ternary(len(patch.Selector.Operation) == 0, "", property)
+							p.Selector.PropertyType = utils.Ternary(len(patch.Selector.Operation) == 0, property, "")
+						}))
+					},
+				),
 			)...,
 		)
 	}

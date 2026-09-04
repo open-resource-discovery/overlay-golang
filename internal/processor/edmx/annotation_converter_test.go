@@ -206,6 +206,64 @@ func TestConvert_CollectionOfRecords_SingleRecord_ProducesRecordInsideCollection
 	)
 }
 
+// ---- Convert: qualifier support ---------------------------------------------
+
+func TestConvert_StringValue_WithQualifier_ProducesQualifierAttribute(t *testing.T) {
+	assertXML(t,
+		AnnotationConverter(0).Convert("@Core.Description#q1", "A book"),
+		`<Annotation Term="Core.Description" Qualifier="q1" String="A book" />`,
+	)
+}
+
+func TestConvert_BoolValue_WithQualifier_ProducesQualifierAttribute(t *testing.T) {
+	assertXML(t,
+		AnnotationConverter(0).Convert("@Core.Computed#Restricted", true),
+		`<Annotation Term="Core.Computed" Qualifier="Restricted" Bool="true" />`,
+	)
+}
+
+func TestConvert_WithQualifier_TermDoesNotIncludeQualifier(t *testing.T) {
+	node := AnnotationConverter(0).Convert("@Core.Description#q1", "value")
+	if node.Attribute("Term") != "Core.Description" {
+		t.Errorf("Term attribute: got %q, want %q", node.Attribute("Term"), "Core.Description")
+	}
+	if node.Attribute("Qualifier") != "q1" {
+		t.Errorf("Qualifier attribute: got %q, want %q", node.Attribute("Qualifier"), "q1")
+	}
+}
+
+func TestConvert_WithoutQualifier_QualifierAttributeAbsent(t *testing.T) {
+	node := AnnotationConverter(0).Convert("@Core.Description", "value")
+	if node.Attribute("Qualifier") != "" {
+		t.Errorf("expected no Qualifier attribute, got %q", node.Attribute("Qualifier"))
+	}
+}
+
+func TestConvert_CollectionValue_WithQualifier_ProducesQualifierAttribute(t *testing.T) {
+	assertXML(t,
+		AnnotationConverter(0).Convert("@Capabilities.BatchSupportType#q1", []any{"Single", "Transactional"}),
+		`<Annotation Term="Capabilities.BatchSupportType" Qualifier="q1">
+  <Collection>
+    <String>Single</String>
+    <String>Transactional</String>
+  </Collection>
+</Annotation>`,
+	)
+}
+
+func TestConvert_RecordValue_WithQualifier_ProducesQualifierAttribute(t *testing.T) {
+	assertXML(t,
+		AnnotationConverter(0).Convert("@Capabilities.InsertRestrictions#ReadOnly", map[string]any{
+			"Insertable": false,
+		}),
+		`<Annotation Term="Capabilities.InsertRestrictions" Qualifier="ReadOnly">
+  <Record>
+    <PropertyValue Property="Insertable" Bool="false" />
+  </Record>
+</Annotation>`,
+	)
+}
+
 // ---- resolveTypeName: panic on unsupported type -----------------------------
 
 func TestConvert_UnsupportedScalarType_Panics(t *testing.T) {

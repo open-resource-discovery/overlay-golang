@@ -8,7 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/ohler55/ojg/jp"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
-	xml2json "github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 )
 
 var resolvers = (func() *struct {
