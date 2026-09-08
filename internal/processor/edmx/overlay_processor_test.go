@@ -249,6 +249,56 @@ func TestApply_Merge_ExistingAnnotations_AppendsToBlock(t *testing.T) {
 	}
 }
 
+func TestApply_Merge_AnnotationAlreadyExists_OverwritesExistingValue(t *testing.T) {
+	// Document has: one unqualified + two qualified annotations on Core.Description.
+	// Patch targets the unqualified one and the "q1" qualifier.
+	// The "q2" qualifier must remain untouched.
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" String="unqualified-old"/>
+        <Annotation Term="Core.Description" Qualifier="q1" String="q1-old"/>
+        <Annotation Term="Core.Description" Qualifier="q2" String="q2-unchanged"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data: map[string]any{
+					"@Core.Description":    "unqualified-new",
+					"@Core.Description#q1": "q1-new",
+				},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Exactly one annotation per distinct Term+Qualifier combination.
+	if count := strings.Count(result.Content, `Term="Core.Description"`); count != 3 {
+		t.Errorf("expected exactly 3 Core.Description annotations, got %d:\n%s", count, result.Content)
+	}
+	// Patched values are present.
+	if !strings.Contains(result.Content, `String="unqualified-new"`) {
+		t.Errorf("expected unqualified annotation updated to 'unqualified-new':\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `String="q1-new"`) {
+		t.Errorf("expected q1 annotation updated to 'q1-new':\n%s", result.Content)
+	}
+	// Old values are gone.
+	if strings.Contains(result.Content, `String="unqualified-old"`) {
+		t.Errorf("expected old unqualified value replaced:\n%s", result.Content)
+	}
+	if strings.Contains(result.Content, `String="q1-old"`) {
+		t.Errorf("expected old q1 value replaced:\n%s", result.Content)
+	}
+	// Untouched qualifier is unchanged.
+	if !strings.Contains(result.Content, `String="q2-unchanged"`) {
+		t.Errorf("expected q2 annotation left untouched:\n%s", result.Content)
+	}
+}
+
 // ─── Apply — update action ────────────────────────────────────────────────────
 
 func TestApply_Update_NoExistingAnnotations_CreatesAnnotationsBlock(t *testing.T) {
@@ -431,6 +481,112 @@ func TestApply_Reconcile_InlineAnnotations_MergedBeforeProcessing(t *testing.T) 
 	}
 	if !strings.Contains(result.Content, "Core.Description") {
 		t.Errorf("expected merged Core.Description in output:\n%s", result.Content)
+	}
+}
+
+// ─── Apply — qualifier support ────────────────────────────────────────────────
+
+func TestApply_Merge_QualifiedAnnotation_WritesQualifierAttribute(t *testing.T) {
+	p := newProcessor(t, minimalXML(""))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     map[string]any{"@Core.Description#Restricted": "Restricted books only"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result.Content, `Term="Core.Description"`) {
+		t.Errorf("expected Term=Core.Description in output:\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `Qualifier="Restricted"`) {
+		t.Errorf("expected Qualifier=Restricted in output:\n%s", result.Content)
+	}
+}
+
+func TestApply_Merge_QualifiedAnnotation_DoesNotOverwriteUnqualifiedAnnotation(t *testing.T) {
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" String="unqualified"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     map[string]any{"@Core.Description#Restricted": "qualified"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result.Content, `String="unqualified"`) {
+		t.Errorf("expected unqualified annotation preserved in output:\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `Qualifier="Restricted"`) {
+		t.Errorf("expected qualified annotation added in output:\n%s", result.Content)
+	}
+}
+
+func TestApply_Update_QualifiedAnnotation_ReplacesQualifiedAnnotation(t *testing.T) {
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" Qualifier="Restricted" String="old"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "update",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     map[string]any{"@Core.Description#Restricted": "new"},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(result.Content, `String="old"`) {
+		t.Errorf("expected old qualified annotation replaced in output:\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `String="new"`) {
+		t.Errorf("expected new qualified annotation value in output:\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `Qualifier="Restricted"`) {
+		t.Errorf("expected Qualifier=Restricted in output:\n%s", result.Content)
+	}
+}
+
+func TestApply_Remove_QualifiedAnnotation_PrunesOnlyMatchingQualifier(t *testing.T) {
+	existing := `
+      <Annotations Target="Svc.Book">
+        <Annotation Term="Core.Description" String="unqualified"/>
+        <Annotation Term="Core.Description" Qualifier="Restricted" String="qualified"/>
+      </Annotations>`
+	p := newProcessor(t, minimalXML(existing))
+	result, err := p.Apply(model.OverlayDefinition{
+		Overlay: model.Overlay{
+			Patches: []model.Patch{{
+				Action:   "remove",
+				Selector: &model.Selector{EntityType: "Svc.Book"},
+				Data:     map[string]any{"@Core.Description#Restricted": nil},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(result.Content, `Qualifier="Restricted"`) {
+		t.Errorf("expected qualified annotation removed from output:\n%s", result.Content)
+	}
+	if !strings.Contains(result.Content, `String="unqualified"`) {
+		t.Errorf("expected unqualified annotation preserved in output:\n%s", result.Content)
 	}
 }
 

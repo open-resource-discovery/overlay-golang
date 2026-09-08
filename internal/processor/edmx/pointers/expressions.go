@@ -170,8 +170,11 @@ var expressions = (func() *struct {
 					jputils.Expr(
 						"nodes",
 						jputils.And(
-							jputils.Eq("@.name", "Property"),
 							jputils.Eq("@.attributes.Name", property),
+							jputils.Or(
+								jputils.Eq("@.name", "Property"),
+								jputils.Eq("@.name", "NavigationProperty"),
+							),
 						),
 					),
 				),

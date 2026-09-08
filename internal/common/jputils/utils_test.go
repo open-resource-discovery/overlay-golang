@@ -627,6 +627,73 @@ func TestAnd(t *testing.T) {
 	})
 }
 
+func TestOr(t *testing.T) {
+	arr := []any{
+		map[string]any{"name": "Alice", "age": int64(30)},
+		map[string]any{"name": "Alice", "age": int64(25)},
+		map[string]any{"name": "Bob", "age": int64(30)},
+	}
+
+	t.Run("two conditions both satisfied", func(t *testing.T) {
+		result := Expr("$", Or(Eq("@.name", "Alice"), Eq("@.age", int64(30)))).Get(arr)
+		if len(result) != 3 {
+			t.Fatalf("len = %d, want 3", len(result))
+		}
+	})
+
+	t.Run("only first condition satisfied", func(t *testing.T) {
+		result := Expr("$", Or(Eq("@.name", "Alice"), Eq("@.age", int64(99)))).Get(arr)
+		if len(result) != 2 {
+			t.Fatalf("len = %d, want 2", len(result))
+		}
+	})
+
+	t.Run("only second condition satisfied", func(t *testing.T) {
+		result := Expr("$", Or(Eq("@.name", "Charlie"), Eq("@.age", int64(30)))).Get(arr)
+		if len(result) != 2 {
+			t.Fatalf("len = %d, want 2", len(result))
+		}
+	})
+
+	t.Run("neither condition satisfied", func(t *testing.T) {
+		result := Expr("$", Or(Eq("@.name", "Charlie"), Eq("@.age", int64(99)))).Get(arr)
+		if len(result) != 0 {
+			t.Errorf("expected empty, got %v", result)
+		}
+	})
+
+	t.Run("three conditions via rest variadics", func(t *testing.T) {
+		data := []any{
+			map[string]any{"a": "x", "b": "y", "c": "z"},
+			map[string]any{"a": "x", "b": "y", "c": "w"},
+			map[string]any{"a": "x", "b": "n", "c": "z"},
+			map[string]any{"a": "q", "b": "n", "c": "w"},
+		}
+		result := Expr("$", Or(Eq("@.a", "x"), Eq("@.b", "y"), Eq("@.c", "z"))).Get(data)
+		if len(result) != 3 {
+			t.Fatalf("len = %d, want 3", len(result))
+		}
+	})
+
+	t.Run("four conditions via rest variadics", func(t *testing.T) {
+		data := []any{
+			map[string]any{"a": "1", "b": "2", "c": "3", "d": "4"},
+			map[string]any{"a": "X", "b": "X", "c": "X", "d": "4"},
+			map[string]any{"a": "X", "b": "X", "c": "X", "d": "X"},
+		}
+		result := Expr("$", Or(Eq("@.a", "1"), Eq("@.b", "2"), Eq("@.c", "3"), Eq("@.d", "4"))).Get(data)
+		if len(result) != 2 {
+			t.Fatalf("len = %d, want 2", len(result))
+		}
+	})
+
+	t.Run("returns non-nil Equation", func(t *testing.T) {
+		if Or(Eq("@.x", "a"), Eq("@.y", "b")) == nil {
+			t.Error("expected non-nil equation")
+		}
+	})
+}
+
 // ---- SortedLocations --------------------------------------------------------
 
 // sortedStrings converts a []jp.Expr to []string for easy assertion.

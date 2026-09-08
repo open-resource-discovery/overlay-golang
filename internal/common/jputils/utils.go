@@ -98,6 +98,10 @@ func And(first *jp.Equation, second *jp.Equation, rest ...*jp.Equation) *jp.Equa
 	return utils.Reduce(rest, jp.And(first, second), jp.And)
 }
 
+func Or(first *jp.Equation, second *jp.Equation, rest ...*jp.Equation) *jp.Equation {
+	return utils.Reduce(rest, jp.Or(first, second), jp.Or)
+}
+
 func Pinpoint(document any, expression jp.Expr) (jp.Expr, bool, *errors.OverlayError) {
 	located := expression.Locate(document, 2)
 

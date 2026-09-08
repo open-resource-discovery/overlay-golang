@@ -18,7 +18,7 @@ func TestDecompose_NilData_ReturnsPatchUnchanged(t *testing.T) {
 		Selector: &model.Selector{EntityType: "CatalogService.Books"},
 		Data:     nil,
 	}
-	testutils.AssertContainsInAnyOrder(t, PatchDecomposer(0).Decompose(patch), []model.Patch{patch})
+	testutils.AssertContainsInOrder(t, PatchDecomposer(0).Decompose(patch), []model.Patch{patch})
 }
 
 // ---- empty / ignored-key cases ----------------------------------------------
@@ -45,7 +45,7 @@ func TestDecompose_OnlyDollarPrefixedKeys_ReturnsEmptySlice(t *testing.T) {
 // ---- annotation key cases ---------------------------------------------------
 
 func TestDecompose_SingleAnnotation_NoOperation_ProducesOnePatch(t *testing.T) {
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -56,6 +56,14 @@ func TestDecompose_SingleAnnotation_NoOperation_ProducesOnePatch(t *testing.T) {
 			Data:        map[string]any{"@Core.Description": "A book"},
 		}),
 		[]model.Patch{
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books"},
+				Data:        map[string]any{"@Core.Description": nil},
+			},
 			{
 				Action:      "merge",
 				Description: "test-description",
@@ -69,7 +77,7 @@ func TestDecompose_SingleAnnotation_NoOperation_ProducesOnePatch(t *testing.T) {
 }
 
 func TestDecompose_MultipleAnnotations_CollapsedIntoOnePatch(t *testing.T) {
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -83,6 +91,17 @@ func TestDecompose_MultipleAnnotations_CollapsedIntoOnePatch(t *testing.T) {
 			},
 		}),
 		[]model.Patch{
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books"},
+				Data: map[string]any{
+					"@Core.Description":     nil,
+					"@Core.LongDescription": nil,
+				},
+			},
 			{
 				Action:      "merge",
 				Description: "test-description",
@@ -102,7 +121,7 @@ func TestDecompose_MultipleAnnotations_CollapsedIntoOnePatch(t *testing.T) {
 
 func TestDecompose_SingleProperty_NoOperation_SetsPropertyType(t *testing.T) {
 	// Without Operation set, the property name goes into Selector.PropertyType.
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -113,6 +132,14 @@ func TestDecompose_SingleProperty_NoOperation_SetsPropertyType(t *testing.T) {
 			Data:        map[string]any{"title": map[string]any{"@Core.Description": "The title"}},
 		}),
 		[]model.Patch{
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:        map[string]any{"@Core.Description": nil},
+			},
 			{
 				Action:      "merge",
 				Description: "test-description",
@@ -127,7 +154,7 @@ func TestDecompose_SingleProperty_NoOperation_SetsPropertyType(t *testing.T) {
 
 func TestDecompose_SingleProperty_OperationSet_SetsParameter(t *testing.T) {
 	// With Operation set, the property name goes into Selector.Parameter instead.
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -138,6 +165,14 @@ func TestDecompose_SingleProperty_OperationSet_SetsParameter(t *testing.T) {
 			Data:        map[string]any{"id": map[string]any{"@Core.OptionalParameter": map[string]any{}}},
 		}),
 		[]model.Patch{
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{Operation: "CatalogService.getBookById(Edm.Int32)", Parameter: "id"},
+				Data:        map[string]any{"@Core.OptionalParameter": nil},
+			},
 			{
 				Action:      "merge",
 				Description: "test-description",
@@ -151,7 +186,7 @@ func TestDecompose_SingleProperty_OperationSet_SetsParameter(t *testing.T) {
 }
 
 func TestDecompose_MultipleProperties_OnePatchPerProperty(t *testing.T) {
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -167,12 +202,28 @@ func TestDecompose_MultipleProperties_OnePatchPerProperty(t *testing.T) {
 		}),
 		[]model.Patch{
 			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "priority"},
+				Data:        map[string]any{"@Core.Description": nil},
+			},
+			{
 				Action:      "merge",
 				Description: "test-description",
 				Tags:        []string{"tag-a", "tag-b"},
 				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
-				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
-				Data:        map[string]any{"@Core.Description": "Title"},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "priority"},
+				Data:        map[string]any{"@Core.Description": "Priority"},
+			},
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "stock"},
+				Data:        map[string]any{"@Core.Description": nil},
 			},
 			{
 				Action:      "merge",
@@ -183,12 +234,20 @@ func TestDecompose_MultipleProperties_OnePatchPerProperty(t *testing.T) {
 				Data:        map[string]any{"@Core.Description": "Stock"},
 			},
 			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:        map[string]any{"@Core.Description": nil},
+			},
+			{
 				Action:      "merge",
 				Description: "test-description",
 				Tags:        []string{"tag-a", "tag-b"},
 				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
-				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "priority"},
-				Data:        map[string]any{"@Core.Description": "Priority"},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:        map[string]any{"@Core.Description": "Title"},
 			},
 		},
 	)
@@ -198,7 +257,7 @@ func TestDecompose_MultipleProperties_OnePatchPerProperty(t *testing.T) {
 
 func TestDecompose_Mixed_AnnotationsAndProperties_ProducesCorrectPatches(t *testing.T) {
 	// 1 annotation patch (all @-keys collapsed) + 1 property patch per property key.
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -215,6 +274,17 @@ func TestDecompose_Mixed_AnnotationsAndProperties_ProducesCorrectPatches(t *test
 		}),
 		[]model.Patch{
 			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books"},
+				Data: map[string]any{
+					"@Core.Description":     nil,
+					"@Core.LongDescription": nil,
+				},
+			},
+			{
 				Action:      "merge",
 				Description: "test-description",
 				Tags:        []string{"tag-a", "tag-b"},
@@ -226,12 +296,12 @@ func TestDecompose_Mixed_AnnotationsAndProperties_ProducesCorrectPatches(t *test
 				},
 			},
 			{
-				Action:      "merge",
+				Action:      "remove",
 				Description: "test-description",
 				Tags:        []string{"tag-a", "tag-b"},
 				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
-				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
-				Data:        map[string]any{"@Core.Description": "The title"},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "stock"},
+				Data:        map[string]any{"@Core.Description": nil},
 			},
 			{
 				Action:      "merge",
@@ -241,13 +311,29 @@ func TestDecompose_Mixed_AnnotationsAndProperties_ProducesCorrectPatches(t *test
 				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "stock"},
 				Data:        map[string]any{"@Core.Description": "Stock level"},
 			},
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:        map[string]any{"@Core.Description": nil},
+			},
+			{
+				Action:      "merge",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:        map[string]any{"@Core.Description": "The title"},
+			},
 		},
 	)
 }
 
 func TestDecompose_DollarKeys_IgnoredAlongsideAnnotationsAndProperties(t *testing.T) {
 	// $-prefixed keys are silently ignored; only the @ and property keys produce patches.
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -263,12 +349,28 @@ func TestDecompose_DollarKeys_IgnoredAlongsideAnnotationsAndProperties(t *testin
 		}),
 		[]model.Patch{
 			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books"},
+				Data:        map[string]any{"@Core.Description": nil},
+			},
+			{
 				Action:      "merge",
 				Description: "test-description",
 				Tags:        []string{"tag-a", "tag-b"},
 				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
 				Selector:    &model.Selector{EntityType: "CatalogService.Books"},
 				Data:        map[string]any{"@Core.Description": "A book"},
+			},
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:        map[string]any{"@Core.Description": nil},
 			},
 			{
 				Action:      "merge",
@@ -287,7 +389,7 @@ func TestDecompose_DollarKeys_IgnoredAlongsideAnnotationsAndProperties(t *testin
 func TestDecompose_PatchFields_PreservedInAllProducedPatches(t *testing.T) {
 	// Action, Description, Tags, and Meta must be copied verbatim into every
 	// produced patch; only Selector and Data are rewritten.
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "update",
@@ -325,7 +427,7 @@ func TestDecompose_PatchFields_PreservedInAllProducedPatches(t *testing.T) {
 
 func TestDecompose_AnnotationPatch_SelectorFieldsUnchanged(t *testing.T) {
 	// The annotation patch must carry the original selector untouched.
-	testutils.AssertContainsInAnyOrder(
+	testutils.AssertContainsInOrder(
 		t,
 		PatchDecomposer(0).Decompose(model.Patch{
 			Action:      "merge",
@@ -336,6 +438,14 @@ func TestDecompose_AnnotationPatch_SelectorFieldsUnchanged(t *testing.T) {
 			Data:        map[string]any{"@Core.Description": "A book"},
 		}),
 		[]model.Patch{
+			{
+				Action:      "remove",
+				Description: "test-description",
+				Tags:        []string{"tag-a", "tag-b"},
+				Meta:        map[string]json.RawMessage{"source": json.RawMessage(`"unit-test"`)},
+				Selector:    &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:        map[string]any{"@Core.Description": nil},
+			},
 			{
 				Action:      "merge",
 				Description: "test-description",
@@ -353,20 +463,26 @@ func TestDecompose_AnnotationPatch_SelectorFieldsUnchanged(t *testing.T) {
 func TestDecompose_PropertyPatch_NoOperation_ParameterIsEmpty(t *testing.T) {
 	// When Operation is empty, the produced property patch must have Parameter=""
 	// (PropertyType gets the property name, Parameter stays empty).
-	result := PatchDecomposer(0).Decompose(model.Patch{
-		Action:   "merge",
-		Selector: &model.Selector{EntityType: "CatalogService.Books"},
-		Data:     map[string]any{"title": map[string]any{"@Core.Description": "The title"}},
-	})
-	if len(result) != 1 {
-		t.Fatalf("expected 1 patch, got %d", len(result))
-	}
-	if result[0].Selector.Parameter != "" {
-		t.Errorf("Parameter: got %q, want empty string", result[0].Selector.Parameter)
-	}
-	if result[0].Selector.PropertyType != "title" {
-		t.Errorf("PropertyType: got %q, want %q", result[0].Selector.PropertyType, "title")
-	}
+	testutils.AssertContainsInOrder(
+		t,
+		PatchDecomposer(0).Decompose(model.Patch{
+			Action:   "merge",
+			Selector: &model.Selector{EntityType: "CatalogService.Books"},
+			Data:     map[string]any{"title": map[string]any{"@Core.Description": "The title"}},
+		}),
+		[]model.Patch{
+			{
+				Action:   "remove",
+				Selector: &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:     map[string]any{"@Core.Description": nil},
+			},
+			{
+				Action:   "merge",
+				Selector: &model.Selector{EntityType: "CatalogService.Books", PropertyType: "title"},
+				Data:     map[string]any{"@Core.Description": "The title"},
+			},
+		},
+	)
 }
 
 // ---- property patch: PropertyType cleared when Operation is set -------------
@@ -374,18 +490,24 @@ func TestDecompose_PropertyPatch_NoOperation_ParameterIsEmpty(t *testing.T) {
 func TestDecompose_PropertyPatch_OperationSet_PropertyTypeIsEmpty(t *testing.T) {
 	// When Operation is set, the produced property patch must have PropertyType=""
 	// (Parameter gets the property name, PropertyType stays empty).
-	result := PatchDecomposer(0).Decompose(model.Patch{
-		Action:   "merge",
-		Selector: &model.Selector{Operation: "CatalogService.getBookById(Edm.Int32)"},
-		Data:     map[string]any{"id": map[string]any{"@Core.OptionalParameter": map[string]any{}}},
-	})
-	if len(result) != 1 {
-		t.Fatalf("expected 1 patch, got %d", len(result))
-	}
-	if result[0].Selector.PropertyType != "" {
-		t.Errorf("PropertyType: got %q, want empty string", result[0].Selector.PropertyType)
-	}
-	if result[0].Selector.Parameter != "id" {
-		t.Errorf("Parameter: got %q, want %q", result[0].Selector.Parameter, "id")
-	}
+	testutils.AssertContainsInOrder(
+		t,
+		PatchDecomposer(0).Decompose(model.Patch{
+			Action:   "merge",
+			Selector: &model.Selector{Operation: "CatalogService.getBookById(Edm.Int32)"},
+			Data:     map[string]any{"id": map[string]any{"@Core.OptionalParameter": map[string]any{}}},
+		}),
+		[]model.Patch{
+			{
+				Action:   "remove",
+				Selector: &model.Selector{Operation: "CatalogService.getBookById(Edm.Int32)", Parameter: "id"},
+				Data:     map[string]any{"@Core.OptionalParameter": nil},
+			},
+			{
+				Action:   "merge",
+				Selector: &model.Selector{Operation: "CatalogService.getBookById(Edm.Int32)", Parameter: "id"},
+				Data:     map[string]any{"@Core.OptionalParameter": map[string]any{}},
+			},
+		},
+	)
 }

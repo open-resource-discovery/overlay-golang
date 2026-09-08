@@ -138,6 +138,28 @@ func TestResolveNamespace_EntityTypeProperty(t *testing.T) {
 	}
 }
 
+func TestResolveNamespace_EntityTypeNavigationProperty(t *testing.T) {
+	doc := edmxDoc(`<Schema Namespace="My.Service" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+    <EntityType Name="Book">
+      <NavigationProperty Name="author" Type="My.Service.Author"/>
+    </EntityType>
+  </Schema>`)
+
+	expr := expressions.EntityType("My.Service", "Book", "author")
+	pexpr, found, err := xml2json.Pinpoint(doc, expr)
+	if !found || err != nil {
+		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+	}
+	if got := pexpr.First(doc).(xml2json.Node).Name(); got != "NavigationProperty" {
+		t.Fatalf("resolved element: got %q, want NavigationProperty", got)
+	}
+
+	got := resolvers.ResolveNamespace(doc, pexpr)
+	if got != "My.Service" {
+		t.Errorf("got %q, want %q", got, "My.Service")
+	}
+}
+
 func TestResolveNamespace_ComplexType(t *testing.T) {
 	doc := edmxDoc(`<Schema Namespace="My.Service" xmlns="http://docs.oasis-open.org/odata/ns/edm">
     <ComplexType Name="Address"/>
@@ -392,6 +414,25 @@ func TestResolveAnnotationsTarget_EntityTypeProperty(t *testing.T) {
 	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
 	if got != "My.Service.Book/title" {
 		t.Errorf("got %q, want %q", got, "My.Service.Book/title")
+	}
+}
+
+func TestResolveAnnotationsTarget_EntityTypeNavigationProperty(t *testing.T) {
+	doc := edmxDoc(`<Schema Namespace="My.Service" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+    <EntityType Name="Book">
+      <NavigationProperty Name="author" Type="My.Service.Author"/>
+    </EntityType>
+  </Schema>`)
+
+	expr := expressions.EntityType("My.Service", "Book", "author")
+	pexpr, found, err := xml2json.Pinpoint(doc, expr)
+	if !found || err != nil {
+		t.Fatalf("Pinpoint failed: found=%v err=%v", found, err)
+	}
+
+	got := resolvers.ResolveAnnotationsTarget(doc, pexpr)
+	if got != "My.Service.Book/author" {
+		t.Errorf("got %q, want %q", got, "My.Service.Book/author")
 	}
 }
 

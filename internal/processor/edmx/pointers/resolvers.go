@@ -8,7 +8,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/ohler55/ojg/jp"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
-	xml2json "github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 )
 
 var resolvers = (func() *struct {
@@ -63,10 +63,10 @@ var resolvers = (func() *struct {
 			switch name := element.Name(); name {
 			case "Schema":
 				return element.Attribute("Namespace")
-			case "Member", "Property", "Parameter", "EntitySet", "ReturnType", "FunctionImport":
-				return expression[:len(expression)-4].First(content).(xml2json.Node).Attribute("Namespace")
 			case "Action", "Function", "EnumType", "EntityType", "ComplexType", "EntityContainer":
 				return expression[:len(expression)-2].First(content).(xml2json.Node).Attribute("Namespace")
+			case "Member", "Property", "Parameter", "EntitySet", "ReturnType", "FunctionImport", "NavigationProperty":
+				return expression[:len(expression)-4].First(content).(xml2json.Node).Attribute("Namespace")
 			default:
 				panic(errors.Errorf("unexpected element: %s", name))
 			}
@@ -100,11 +100,12 @@ var resolvers = (func() *struct {
 					),
 					utils.Ternary(name == "ReturnType", "$ReturnType", element.Attribute("Name")),
 				)
-			case "Member", "Property", "EntitySet", "FunctionImport":
+			case "Member", "Property", "EntitySet", "FunctionImport", "NavigationProperty":
 				// <namespace>.<enum-type>/<member>
 				// <namespace>.<entity-type>/<property>
 				// <namespace>.<complex-type>/<property>
 				// <namespace>.<entity-container>/<entity-set>
+				// <namespace>.<entity-type>/<navigation-property>
 				// <namespace>.<entity-container>/<function-import>
 				return utils.Join(
 					"/",
