@@ -550,6 +550,34 @@ func TestApply_Remove_Operation_DeletesOperation_JSON(t *testing.T) {
 	}
 }
 
+// ---- resolve ---------------------------------------------------------------
+
+func TestResolve_RemoveAbsentOperation_DoesNotReturnError(t *testing.T) {
+	expression, err := newJSONProcessor(t).resolve(petstoreDocJSON, model.Patch{
+		Action:   "remove",
+		Selector: &model.Selector{Operation: "nonexistentOperation"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent operation, got: %v", err)
+	}
+	if expression.Has(petstoreDocJSON) {
+		t.Fatal("expected selector not to match an operation")
+	}
+}
+
+func TestResolve_RemoveAbsentOperationParameter_DoesNotReturnError(t *testing.T) {
+	expression, err := newJSONProcessor(t).resolve(petstoreDocJSON, model.Patch{
+		Action:   "remove",
+		Selector: &model.Selector{Operation: "showPetById", Parameter: "nonexistentParameter"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent operation parameter, got: %v", err)
+	}
+	if expression.Has(petstoreDocJSON) {
+		t.Fatal("expected selector not to match an operation parameter")
+	}
+}
+
 // ---- Apply: patch ordering --------------------------------------------------
 
 func TestApply_PatchesAppliedInOrder_JSON(t *testing.T) {

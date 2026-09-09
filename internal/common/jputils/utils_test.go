@@ -535,24 +535,30 @@ func TestPinpoint(t *testing.T) {
 
 	t.Run("expression matching nothing returns error and exists=false", func(t *testing.T) {
 		expr := Expr("$", "missing")
-		_, exists, err := Pinpoint(data, expr)
+		result, exists, err := Pinpoint(data, expr)
 		if err == nil {
 			t.Error("expected error for no-match, got nil")
 		}
 		if exists {
 			t.Error("exists: got true, want false")
 		}
+		if expr.String() != result.String() {
+			t.Errorf("result: got %s, want %s", result, expr)
+		}
 	})
 
 	t.Run("ambiguous expression returns error and exists=true", func(t *testing.T) {
 		// Wildcard matches multiple elements.
 		expr := Expr("$", "*")
-		_, exists, err := Pinpoint(data, expr)
+		result, exists, err := Pinpoint(data, expr)
 		if err == nil {
 			t.Error("expected error for ambiguous match, got nil")
 		}
 		if !exists {
 			t.Error("exists: got false, want true")
+		}
+		if expr.String() != result.String() {
+			t.Errorf("result: got %s, want %s", result, expr)
 		}
 	})
 }

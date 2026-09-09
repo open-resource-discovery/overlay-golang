@@ -396,6 +396,36 @@ func TestApply_RootSelector_Remove_ReturnsError(t *testing.T) {
 	}
 }
 
+// ---- resolve ---------------------------------------------------------------
+
+func TestResolve_RemoveAbsentEntityType_DoesNotReturnError(t *testing.T) {
+	expression, err := mustNewProcessor(t, flightContent).resolve(flightDoc, model.Patch{
+		Action:   "remove",
+		Selector: &model.Selector{EntityType: "NonexistentEntity"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent entity type, got: %v", err)
+	}
+	testutils.AssertExpr(t, expression, "$.definitions.NonexistentEntity")
+	if expression.Has(flightDoc) {
+		t.Fatal("expected selector not to match an entity")
+	}
+}
+
+func TestResolve_RemoveAbsentEntityTypeProperty_DoesNotReturnError(t *testing.T) {
+	expression, err := mustNewProcessor(t, flightContent).resolve(flightDoc, model.Patch{
+		Action:   "remove",
+		Selector: &model.Selector{EntityType: "Airline", PropertyType: "NonexistentProperty"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent entity property, got: %v", err)
+	}
+	testutils.AssertExpr(t, expression, "$.definitions.Airline.elements.NonexistentProperty")
+	if expression.Has(flightDoc) {
+		t.Fatal("expected selector not to match an entity property")
+	}
+}
+
 // ---- Apply: patch ordering --------------------------------------------------
 
 func TestApply_PatchesAppliedInOrder(t *testing.T) {

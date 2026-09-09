@@ -54,8 +54,8 @@ func (self *OverlayProcessor) apply(patch model.Patch, document xml2json.Documen
 		self.Decompose(patch),
 		nil,
 		func(result *errors.OverlayError, dpatch model.Patch) *errors.OverlayError {
-			pointer, err := NewPointer(document, dpatch.Selector)
-			if err != nil {
+			pointer, err := NewPointer(document, dpatch)
+			if err != nil || pointer.IsNil() { // pointer can be nil when 'remove' & element not found
 				return errors.Append(result, err)
 			}
 

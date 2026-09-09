@@ -266,3 +266,18 @@ func TestIntegration_Remove_Operation_DeletesSkill(t *testing.T) {
 		)),
 	)
 }
+
+// TestIntegration_Remove_Operation_AbsentSkill_IsNoOp verifies that a remove
+// patch is idempotent: resolving an operation selector that is absent from the
+// card does not return an error and leaves the document unchanged.
+func TestIntegration_Remove_Operation_AbsentSkill_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/fica_dispute_agent.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "nonexistent-skill"},
+			nil,
+		)),
+	)
+}

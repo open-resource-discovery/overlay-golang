@@ -53,7 +53,7 @@ func (self *OverlayProcessor) apply(patch model.Patch, content map[string]any) *
 		decomposed,
 		nil,
 		func(result *errors.OverlayError, dpatch model.Patch) *errors.OverlayError {
-			expression, err := self.Resolve(content, dpatch.Selector)
+			expression, err := self.Resolve(content, dpatch)
 			if err != nil {
 				return errors.Append(result, errors.WrapPrefix(err, "failed to resolve selector %+v", dpatch.Selector))
 			}
@@ -130,7 +130,7 @@ func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, 
 	result := make([]model.Patch, 0)
 	data := utils.SafeCast[map[string]any](patch.Data)
 	isEnumTypeMemberSelector := len(patch.Selector.EnumType) > 0 && len(patch.Selector.PropertyType) > 0
-	expression, err := self.Resolve(content, patch.Selector)
+	expression, err := self.Resolve(content, patch)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "failed to resolve selector %+v", patch.Selector)
 	}
@@ -210,7 +210,7 @@ func (self *OverlayProcessor) decomposeSyntacticSelector(content map[string]any,
 	}
 
 	result := make([]model.Patch, 0)
-	jsonpath, err := self.Resolve(content, patch.Selector)
+	jsonpath, err := self.Resolve(content, patch)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "failed to resolve selector %+v", patch.Selector)
 	}

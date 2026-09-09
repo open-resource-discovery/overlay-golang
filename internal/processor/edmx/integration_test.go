@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
+	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/xml2json"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
@@ -27,8 +28,15 @@ func normalizeXML(t *testing.T, raw string) string {
 // applyIntegration applies the given overlay to the integration input fixture
 // and returns the normalized result XML string.
 func applyIntegration(t *testing.T, od model.OverlayDefinition) string {
+	return applyIntegrationContent(t, integrationInput, od)
+}
+
+// applyIntegrationContent applies an overlay to the supplied EDMX content and
+// returns normalized output. It supports cases whose selector requires a shape
+// not present in the shared catalog fixture.
+func applyIntegrationContent(t *testing.T, content string, od model.OverlayDefinition) string {
 	t.Helper()
-	p := NewOverlayProcessor(model.ResourceDefinition{Content: integrationInput})
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: content})
 	result, err := p.Apply(od)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
@@ -169,6 +177,17 @@ func TestIntegration_Remove_EntityType_PrunesAnnotationTerm(t *testing.T) {
 	)
 }
 
+func TestIntegration_Remove_AbsentEntityType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "CatalogService.NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- update: Namespace selector ---------------------------------------------
 
 // TestIntegration_Update_Namespace_ReplacesSchemaAnnotation updates the CatalogService
@@ -217,6 +236,17 @@ func TestIntegration_Remove_Namespace_PrunesSchemaAnnotation(t *testing.T) {
 				},
 			}},
 		}),
+	)
+}
+
+func TestIntegration_Remove_AbsentNamespace_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Namespace: "NonExistent"},
+			nil,
+		)),
 	)
 }
 
@@ -271,6 +301,118 @@ func TestIntegration_Remove_EntityTypeWithProperty_PrunesPropertyAnnotation(t *t
 	)
 }
 
+func TestIntegration_Remove_EntityTypePropertyWithAbsentEntityType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "CatalogService.NonExistent", PropertyType: "title"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentEntityTypeProperty_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "CatalogService.Books", PropertyType: "NonExistent"},
+			nil,
+		)),
+	)
+}
+
+// ---- remove: ComplexType selector -------------------------------------------
+
+func TestIntegration_Remove_AbsentComplexType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{ComplexType: "CatalogService.NonExistent"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_ComplexTypePropertyWithAbsentComplexType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{ComplexType: "CatalogService.NonExistent", PropertyType: "street"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentComplexTypeProperty_IsNoOp(t *testing.T) {
+	input := `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="CatalogService" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <ComplexType Name="Address">
+        <Property Name="street" Type="Edm.String"/>
+      </ComplexType>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, input),
+		applyIntegrationContent(t, input, testutils.OnePatch(
+			"remove",
+			model.Selector{ComplexType: "CatalogService.Address", PropertyType: "NonExistent"},
+			nil,
+		)),
+	)
+}
+
+// ---- remove: EnumType selector ----------------------------------------------
+
+func TestIntegration_Remove_AbsentEnumType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EnumType: "CatalogService.NonExistent"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_EnumTypeMemberWithAbsentEnumType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EnumType: "CatalogService.NonExistent", PropertyType: "Fiction"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentEnumTypeMember_IsNoOp(t *testing.T) {
+	input := `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="CatalogService" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EnumType Name="Genre">
+        <Member Name="Fiction"/>
+      </EnumType>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, input),
+		applyIntegrationContent(t, input, testutils.OnePatch(
+			"remove",
+			model.Selector{EnumType: "CatalogService.Genre", PropertyType: "NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- update: EntitySet selector ---------------------------------------------
 
 // TestIntegration_Update_EntitySet_ReplacesCapabilitiesAnnotation updates the Books
@@ -322,6 +464,17 @@ func TestIntegration_Remove_EntitySet_PrunesCapabilitiesAnnotation(t *testing.T)
 	)
 }
 
+func TestIntegration_Remove_AbsentEntitySet_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntitySet: "CatalogService.NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- update: Operation selector ---------------------------------------------
 
 // TestIntegration_Update_Operation_ReplacesAnnotationOnFunction updates the getBooks
@@ -343,6 +496,52 @@ func TestIntegration_Update_Operation_ReplacesAnnotationOnFunction(t *testing.T)
 				},
 			}},
 		}),
+	)
+}
+
+// ---- remove: absent operation selectors ------------------------------------
+
+func TestIntegration_Remove_AbsentOperation_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "CatalogService.NonExistent"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_OperationParameterWithAbsentOperation_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "CatalogService.NonExistent", Parameter: "id"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_OperationReturnTypeWithAbsentOperation_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "CatalogService.NonExistent", ReturnType: utils.Ptr(true)},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentOperationParameter_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, integrationInput),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "CatalogService.getBookPriorityById", Parameter: "NonExistent"},
+			nil,
+		)),
 	)
 }
 
