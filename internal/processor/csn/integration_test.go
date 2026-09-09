@@ -281,6 +281,35 @@ func TestIntegration_Remove_EntityTypeWithProperty_RemovesCountryCodeElement(t *
 	)
 }
 
+// TestIntegration_Remove_AbsentEntityType_IsNoOp verifies that remove is
+// idempotent when the semantic entity-type selector does not match a
+// definition.
+func TestIntegration_Remove_AbsentEntityType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/flight_model.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "NonexistentEntity"},
+			nil,
+		)),
+	)
+}
+
+// TestIntegration_Remove_AbsentEntityTypeProperty_IsNoOp verifies that remove
+// is idempotent when the selected entity exists but its property does not.
+func TestIntegration_Remove_AbsentEntityTypeProperty_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/flight_model.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "Airline", PropertyType: "NonexistentProperty"},
+			nil,
+		)),
+	)
+}
+
 // ---- multi-patch: realistic overlay sequence --------------------------------
 
 // TestIntegration_MultiPatch_RealisticOverlaySequence applies a sequence of patches

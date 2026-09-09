@@ -49,7 +49,7 @@ func (self *OverlayProcessor) apply(patch model.Patch, content map[string]any) *
 		decomposed,
 		nil,
 		func(result *errors.OverlayError, dpatch model.Patch) *errors.OverlayError {
-			expression, err := self.resolve(content, dpatch.Selector)
+			expression, err := self.resolve(content, dpatch)
 			if err != nil {
 				return errors.Append(result, errors.WrapPrefix(err, "failed to resolve selector %+v", dpatch.Selector))
 			}
@@ -114,32 +114,33 @@ func (self *OverlayProcessor) update(content map[string]any, expression jp.Expr,
 	)
 }
 
-func (self *OverlayProcessor) resolve(content map[string]any, selector *model.Selector) (jp.Expr, *errors.OverlayError) {
-	if selector.Root != nil && *selector.Root {
+func (self *OverlayProcessor) resolve(content map[string]any, patch model.Patch) (jp.Expr, *errors.OverlayError) {
+	if patch.Selector.Root != nil && *patch.Selector.Root {
 		return jputils.Root(), nil
 	}
 
-	if len(selector.JSONPath) > 0 {
-		return jputils.Parse(selector.JSONPath)
+	if len(patch.Selector.JSONPath) > 0 {
+		return jputils.Parse(patch.Selector.JSONPath)
 	}
 
-	if len(selector.Operation) > 0 {
+	if len(patch.Selector.Operation) > 0 {
 		expression := jputils.Expr(
 			"$",
 			"paths",
 			"*",
-			jputils.Eq("@.operationId", selector.Operation),
+			jputils.Eq("@.operationId", patch.Selector.Operation),
 			utils.Ternary(
-				len(selector.Parameter) == 0,
+				len(patch.Selector.Parameter) == 0,
 				jputils.Expr(),
-				jputils.Expr("parameters", jputils.Eq("@.name", selector.Parameter)),
+				jputils.Expr("parameters", jputils.Eq("@.name", patch.Selector.Parameter)),
 			),
 		)
+		_, found, err := jputils.Pinpoint(content, expression)
 
-		return expression, utils.Third(jputils.Pinpoint(content, expression))
+		return expression, utils.Ternary(!found && patch.Action == "remove", nil, err)
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", patch.Selector)
 }
 
 func (self *OverlayProcessor) decompose(content map[string]any, patch model.Patch) ([]model.Patch, *errors.OverlayError) {
@@ -148,7 +149,7 @@ func (self *OverlayProcessor) decompose(content map[string]any, patch model.Patc
 	}
 
 	result := make([]model.Patch, 0)
-	jsonpath, err := self.resolve(content, patch.Selector)
+	jsonpath, err := self.resolve(content, patch)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "failed to resolve selector %+v", patch.Selector)
 	}

@@ -110,11 +110,11 @@ func Pinpoint(document any, expression jp.Expr) (jp.Expr, bool, *errors.OverlayE
 	}
 
 	if len(located) == 0 {
-		return nil, false, errors.Create(errors.Severity_Warning, "no such element: %s", expression.String())
+		return expression, false, errors.Create(errors.Severity_Warning, "no such element: %s", expression.String())
 	}
 
 	if len(located) > 1 {
-		return nil, true, errors.Create(errors.Severity_Warning, "ambiguous expression: %s", expression.String())
+		return expression, true, errors.Create(errors.Severity_Warning, "ambiguous expression: %s", expression.String())
 	}
 
 	return located[0], true, nil

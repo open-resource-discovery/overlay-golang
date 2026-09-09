@@ -242,6 +242,18 @@ func TestIntegration_Remove_EntityType_DeletesProductEntity(t *testing.T) {
 	)
 }
 
+func TestIntegration_Remove_AbsentEntityType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "ODataDemo.NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- merge: EntityType + PropertyType selector ------------------------------
 
 // TestIntegration_Merge_EntityTypeProperty_AddsDescriptionToPrice merges a
@@ -295,6 +307,30 @@ func TestIntegration_Remove_EntityTypeProperty_RemovesISOCurrencyAnnotation(t *t
 	)
 }
 
+func TestIntegration_Remove_EntityTypePropertyWithAbsentEntityType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "ODataDemo.NonExistent", PropertyType: "Description"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentEntityTypeProperty_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntityType: "ODataDemo.Product", PropertyType: "NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- merge: ComplexType selector --------------------------------------------
 
 // TestIntegration_Merge_ComplexType_AddsAnnotations merges two Core annotations onto
@@ -330,6 +366,18 @@ func TestIntegration_Remove_ComplexType_DeletesAddress(t *testing.T) {
 	)
 }
 
+func TestIntegration_Remove_AbsentComplexType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{ComplexType: "ODataDemo.NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- merge: ComplexType + PropertyType selector -----------------------------
 
 // TestIntegration_Merge_ComplexTypeProperty_AddsDescriptionToCity merges a
@@ -343,6 +391,32 @@ func TestIntegration_Merge_ComplexTypeProperty_AddsDescriptionToCity(t *testing.
 			"merge",
 			model.Selector{ComplexType: "ODataDemo.Address", PropertyType: "City"},
 			map[string]any{"@Core.Description": "City name."},
+		)),
+	)
+}
+
+// ---- remove: ComplexType + PropertyType selector ---------------------------
+
+func TestIntegration_Remove_ComplexTypePropertyWithAbsentComplexType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{ComplexType: "ODataDemo.NonExistent", PropertyType: "Street"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentComplexTypeProperty_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{ComplexType: "ODataDemo.Address", PropertyType: "NonExistent"},
+			nil,
 		)),
 	)
 }
@@ -380,6 +454,18 @@ func TestIntegration_Remove_EnumType_DeletesFileAccess(t *testing.T) {
 	)
 }
 
+func TestIntegration_Remove_AbsentEnumType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EnumType: "ODataDemo.NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- merge: EnumType member selector ----------------------------------------
 
 // TestIntegration_Merge_EnumTypeMember_AddsDescriptionToReadMember merges a
@@ -394,6 +480,32 @@ func TestIntegration_Merge_EnumTypeMember_AddsDescriptionToReadMember(t *testing
 			"merge",
 			model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"},
 			map[string]any{"@Core.Description": "Grants read permission."},
+		)),
+	)
+}
+
+// ---- remove: EnumType member selector ---------------------------------------
+
+func TestIntegration_Remove_EnumTypeMemberWithAbsentEnumType_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EnumType: "ODataDemo.NonExistent", PropertyType: "Read"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentEnumTypeMember_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "NonExistent"},
+			nil,
 		)),
 	)
 }
@@ -431,6 +543,18 @@ func TestIntegration_Remove_EntitySet_RemovesDescriptionAnnotation(t *testing.T)
 	)
 }
 
+func TestIntegration_Remove_AbsentEntitySet_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{EntitySet: "NonExistent"},
+			nil,
+		)),
+	)
+}
+
 // ---- merge: operation selector ----------------------------------------------
 
 // TestIntegration_Merge_Operation_AddsDescription merges a @Core.Description onto
@@ -463,6 +587,56 @@ func TestIntegration_Update_Operation_ReplacesProductsByRating(t *testing.T) {
 			map[string]any{
 				"@Core.Description": "Returns products with a rating at or above the given value.",
 			},
+		)),
+	)
+}
+
+// ---- remove: operation selectors -------------------------------------------
+
+func TestIntegration_Remove_AbsentOperation_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "ODataDemo.NonExistent"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_OperationParameterWithAbsentOperation_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "ODataDemo.NonExistent", Parameter: "Rating"},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_OperationReturnTypeWithAbsentOperation_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "ODataDemo.NonExistent", ReturnType: utils.Ptr(true)},
+			nil,
+		)),
+	)
+}
+
+func TestIntegration_Remove_AbsentOperationParameter_IsNoOp(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"remove",
+			model.Selector{Operation: "ODataDemo.ProductsByRating", Parameter: "NonExistent"},
+			nil,
 		)),
 	)
 }

@@ -302,6 +302,44 @@ func TestIntegration_Remove_Operation_RemovesCreatePets(t *testing.T) {
 	}
 }
 
+// TestIntegration_Remove_AbsentOperation_IsNoOp verifies that a remove patch is
+// idempotent when its operation selector matches no operation.
+func TestIntegration_Remove_AbsentOperation_IsNoOp(t *testing.T) {
+	for _, format := range []string{"json", "yaml"} {
+		t.Run(format, func(t *testing.T) {
+			fixture := fmt.Sprintf("testdata/petstore.%s", format)
+			testutils.AssertDeepEquals(
+				t,
+				testutils.UnmarshalFixture[map[string]any](fixture),
+				applyIntegration(t, fixture, testutils.OnePatch(
+					"remove",
+					model.Selector{Operation: "nonexistentOperation"},
+					nil,
+				)),
+			)
+		})
+	}
+}
+
+// TestIntegration_Remove_AbsentOperationParameter_IsNoOp verifies that a
+// remove patch is idempotent when the operation exists but its parameter does not.
+func TestIntegration_Remove_AbsentOperationParameter_IsNoOp(t *testing.T) {
+	for _, format := range []string{"json", "yaml"} {
+		t.Run(format, func(t *testing.T) {
+			fixture := fmt.Sprintf("testdata/petstore.%s", format)
+			testutils.AssertDeepEquals(
+				t,
+				testutils.UnmarshalFixture[map[string]any](fixture),
+				applyIntegration(t, fixture, testutils.OnePatch(
+					"remove",
+					model.Selector{Operation: "showPetById", Parameter: "nonexistentParameter"},
+					nil,
+				)),
+			)
+		})
+	}
+}
+
 // ---- merge: Operation + Parameter selector ----------------------------------
 
 // TestIntegration_Merge_OperationWithParameter_EnrichsPetIdParam adds a schema

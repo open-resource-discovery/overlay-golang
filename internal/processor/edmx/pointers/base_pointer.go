@@ -19,14 +19,15 @@ type PointerImpl struct {
 	namespace string
 }
 
-func ForOperation(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	namespace, name, parameters := resolvers.ParseQualifiedName(selector.Operation)
-
-	for _, candidate := range [][]any{
+func ForOperation(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	namespace, name, parameters := resolvers.ParseQualifiedName(patch.Selector.Operation)
+	candidates := [][]any{
 		{"Action", expressions.Action(namespace, name, parameters)},
 		{"Function", expressions.Function(namespace, name, parameters)},
 		{"EntityContainer.FunctionImport", expressions.FunctionImport(namespace, name)},
-	} {
+	}
+
+	for _, candidate := range candidates {
 		if parameters != nil && "EntityContainer.FunctionImport" == candidate[0] {
 			continue // A signature-qualified selector cannot target a FunctionImport.
 		}
@@ -36,20 +37,20 @@ func ForOperation(document xml2json.Document, selector *model.Selector) (*Pointe
 		} else if found {
 			return &PointerImpl{
 				document:  document,
-				kind:      utils.SafeCast[string](candidate[0]),
 				element:   candidate[1].(jp.Expr),
+				kind:      utils.SafeCast[string](candidate[0]),
 				namespace: resolvers.ResolveNamespace(document, pexpression),
 				target:    resolvers.ResolveAnnotationsTarget(document, pexpression),
 			}, nil
 		}
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
-func ForEntityType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	namespace, name, _ := resolvers.ParseQualifiedName(selector.EntityType)
-	expression := expressions.EntityType(namespace, name, selector.PropertyType)
+func ForEntityType(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	namespace, name, _ := resolvers.ParseQualifiedName(patch.Selector.EntityType)
+	expression := expressions.EntityType(namespace, name, patch.Selector.PropertyType)
 
 	if pexpression, found, err := xml2json.Pinpoint(document, expression); found && err != nil {
 		return nil, err
@@ -57,18 +58,18 @@ func ForEntityType(document xml2json.Document, selector *model.Selector) (*Point
 		return &PointerImpl{
 			document:  document,
 			element:   expression,
-			kind:      utils.Ternary(len(selector.PropertyType) == 0, "EntityType", "EntityType.Property"),
+			kind:      utils.Ternary(len(patch.Selector.PropertyType) == 0, "EntityType", "EntityType.Property"),
 			namespace: resolvers.ResolveNamespace(document, pexpression),
 			target:    resolvers.ResolveAnnotationsTarget(document, pexpression),
 		}, nil
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
-func ForComplexType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	namespace, name, _ := resolvers.ParseQualifiedName(selector.ComplexType)
-	expression := expressions.ComplexType(namespace, name, selector.PropertyType)
+func ForComplexType(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	namespace, name, _ := resolvers.ParseQualifiedName(patch.Selector.ComplexType)
+	expression := expressions.ComplexType(namespace, name, patch.Selector.PropertyType)
 
 	if pexpression, found, err := xml2json.Pinpoint(document, expression); found && err != nil {
 		return nil, err
@@ -76,18 +77,18 @@ func ForComplexType(document xml2json.Document, selector *model.Selector) (*Poin
 		return &PointerImpl{
 			document:  document,
 			element:   expression,
-			kind:      utils.Ternary(len(selector.PropertyType) == 0, "ComplexType", "ComplexType.Property"),
+			kind:      utils.Ternary(len(patch.Selector.PropertyType) == 0, "ComplexType", "ComplexType.Property"),
 			namespace: resolvers.ResolveNamespace(document, pexpression),
 			target:    resolvers.ResolveAnnotationsTarget(document, pexpression),
 		}, nil
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
-func ForEnumType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	namespace, name, _ := resolvers.ParseQualifiedName(selector.EnumType)
-	expression := expressions.EnumType(namespace, name, selector.PropertyType)
+func ForEnumType(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	namespace, name, _ := resolvers.ParseQualifiedName(patch.Selector.EnumType)
+	expression := expressions.EnumType(namespace, name, patch.Selector.PropertyType)
 
 	if pexpression, found, err := xml2json.Pinpoint(document, expression); found && err != nil {
 		return nil, err
@@ -95,17 +96,17 @@ func ForEnumType(document xml2json.Document, selector *model.Selector) (*Pointer
 		return &PointerImpl{
 			document:  document,
 			element:   expression,
-			kind:      utils.Ternary(len(selector.PropertyType) == 0, "EnumType", "EnumType.Member"),
+			kind:      utils.Ternary(len(patch.Selector.PropertyType) == 0, "EnumType", "EnumType.Member"),
 			namespace: resolvers.ResolveNamespace(document, pexpression),
 			target:    resolvers.ResolveAnnotationsTarget(document, pexpression),
 		}, nil
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
-func ForEntitySet(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	namespace, name, _ := resolvers.ParseQualifiedName(selector.EntitySet)
+func ForEntitySet(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	namespace, name, _ := resolvers.ParseQualifiedName(patch.Selector.EntitySet)
 	index := strings.LastIndex(namespace, ".")
 
 	for _, candidate := range [][]any{
@@ -131,11 +132,11 @@ func ForEntitySet(document xml2json.Document, selector *model.Selector) (*Pointe
 		}
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
-func ForNamespace(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	expression := expressions.Schema(selector.Namespace)
+func ForNamespace(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	expression := expressions.Schema(patch.Selector.Namespace)
 
 	if pexpression, found, err := xml2json.Pinpoint(document, expression); found && err != nil {
 		return nil, err
@@ -149,15 +150,15 @@ func ForNamespace(document xml2json.Document, selector *model.Selector) (*Pointe
 		}, nil
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
-func ForOperationParameter(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	namespace, operation, parameters := resolvers.ParseQualifiedName(selector.Operation)
+func ForOperationParameter(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	namespace, operation, parameters := resolvers.ParseQualifiedName(patch.Selector.Operation)
 
 	for _, candidate := range [][]any{
-		{"Action.Parameter", expressions.ActionParameter(namespace, operation, parameters, selector.Parameter)},
-		{"Function.Parameter", expressions.FunctionParameter(namespace, operation, parameters, selector.Parameter)},
+		{"Action.Parameter", expressions.ActionParameter(namespace, operation, parameters, patch.Selector.Parameter)},
+		{"Function.Parameter", expressions.FunctionParameter(namespace, operation, parameters, patch.Selector.Parameter)},
 	} {
 		if pexpression, found, err := xml2json.Pinpoint(document, candidate[1].(jp.Expr)); found && err != nil {
 			return nil, err
@@ -172,11 +173,11 @@ func ForOperationParameter(document xml2json.Document, selector *model.Selector)
 		}
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
-func ForOperationReturnType(document xml2json.Document, selector *model.Selector) (*PointerImpl, *errors.OverlayError) {
-	namespace, operation, parameters := resolvers.ParseQualifiedName(selector.Operation)
+func ForOperationReturnType(document xml2json.Document, patch model.Patch) (*PointerImpl, *errors.OverlayError) {
+	namespace, operation, parameters := resolvers.ParseQualifiedName(patch.Selector.Operation)
 
 	for _, candidate := range [][]any{
 		{"Action.ReturnType", expressions.ActionReturnType(namespace, operation, parameters)},
@@ -195,11 +196,15 @@ func ForOperationReturnType(document xml2json.Document, selector *model.Selector
 		}
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "no such element: %v", selector)
+	return nil, utils.Ternary(patch.Action == "remove", nil, errors.Create(errors.Severity_Warning, "no such element: %v", patch.Selector))
 }
 
 func (self *PointerImpl) Kind() string {
 	return self.kind
+}
+
+func (self *PointerImpl) IsNil() bool {
+	return self == nil || len(self.element) == 0
 }
 
 func (self *PointerImpl) Target() string {

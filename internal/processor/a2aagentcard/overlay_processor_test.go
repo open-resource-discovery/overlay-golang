@@ -618,7 +618,10 @@ func TestApply_RootSelector_Remove_ReturnsError(t *testing.T) {
 // ---- resolve ----------------------------------------------------------------
 
 func TestExpressions_Resolve_RootSelector_ReturnsRootExpression(t *testing.T) {
-	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Root: utils.Ptr(true)})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{Root: utils.Ptr(true)},
+	})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -626,7 +629,10 @@ func TestExpressions_Resolve_RootSelector_ReturnsRootExpression(t *testing.T) {
 }
 
 func TestExpressions_Resolve_JSONPath_Found(t *testing.T) {
-	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{JSONPath: "$.provider"})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{JSONPath: "$.provider"},
+	})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -635,7 +641,10 @@ func TestExpressions_Resolve_JSONPath_Found(t *testing.T) {
 }
 
 func TestExpressions_Resolve_Operation_Found(t *testing.T) {
-	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Operation: "invoice-recalculation"})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{Operation: "invoice-recalculation"},
+	})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -646,7 +655,10 @@ func TestExpressions_Resolve_Operation_Found(t *testing.T) {
 func TestExpressions_Resolve_JSONPath_NotFound_Succeeds(t *testing.T) {
 	// JSONPath selectors no longer validate existence — a path that matches
 	// nothing is returned as a valid parsed expression without error.
-	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{JSONPath: "$.nonexistent"})
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{JSONPath: "$.nonexistent"},
+	})
 	if err != nil {
 		t.Fatalf("expected no error for non-existent JSONPath, got: %v", err)
 	}
@@ -654,22 +666,41 @@ func TestExpressions_Resolve_JSONPath_NotFound_Succeeds(t *testing.T) {
 }
 
 func TestExpressions_Resolve_JSONPath_InvalidSyntax_ReturnsError(t *testing.T) {
-	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{JSONPath: "$$[invalid"})
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{JSONPath: "$$[invalid"},
+	})
 	if err == nil {
 		t.Fatal("expected error for invalid JSONPath syntax, got nil")
 	}
 }
 
-func TestExpressions_Resolve_Operation_NotFound_ReturnsError(t *testing.T) {
-	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Operation: "nonexistent-skill"})
+func TestExpressions_Resolve_Operation_NotFoundForMerge_ReturnsError(t *testing.T) {
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{Operation: "nonexistent-skill"},
+	})
 	if err == nil {
 		t.Fatal("expected error for operation that matches no skill, got nil")
 	}
 }
 
+func TestExpressions_Resolve_Operation_NotFoundForRemove_DoesNotReturnError(t *testing.T) {
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "remove",
+		Selector: &model.Selector{Operation: "nonexistent-skill"},
+	})
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent operation, got: %v", err)
+	}
+}
+
 func TestExpressions_Resolve_EmptySelector_ReturnsError(t *testing.T) {
 	// An empty Selector has neither Root, JSONPath, nor Operation — must error.
-	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{})
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{},
+	})
 	if err == nil {
 		t.Fatal("expected error for unsupported (empty) selector, got nil")
 	}
@@ -678,7 +709,10 @@ func TestExpressions_Resolve_EmptySelector_ReturnsError(t *testing.T) {
 func TestExpressions_Resolve_RootFalsePtrIsNotRoot(t *testing.T) {
 	// Root: ptr(false) must NOT match the Root branch — it falls through to
 	// JSONPath and Operation (both empty), which returns an error.
-	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{Root: utils.Ptr(false)})
+	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action:   "merge",
+		Selector: &model.Selector{Root: utils.Ptr(false)},
+	})
 	if err == nil {
 		t.Fatal("expected error when Root pointer is false, got nil")
 	}
@@ -686,9 +720,12 @@ func TestExpressions_Resolve_RootFalsePtrIsNotRoot(t *testing.T) {
 
 func TestExpressions_Resolve_JSONPathTakesPrecedenceOverOperation(t *testing.T) {
 	// When both JSONPath and Operation are set, JSONPath is checked first.
-	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, &model.Selector{
-		JSONPath:  "$.provider",
-		Operation: "dispute-case-resolution",
+	e, err := NewOverlayProcessor(makeDefinition(ficaContent)).resolve(ficaDoc, model.Patch{
+		Action: "merge",
+		Selector: &model.Selector{
+			JSONPath:  "$.provider",
+			Operation: "dispute-case-resolution",
+		},
 	})
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
@@ -1121,14 +1158,17 @@ func TestDecompose_RemoveAction_SelectorNotFound_IsNoOp(t *testing.T) {
 	}
 }
 
-func TestDecompose_RemoveAction_OperationNotFound_ReturnsError(t *testing.T) {
-	_, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
+func TestDecompose_RemoveAction_OperationNotFound_IsNoOp(t *testing.T) {
+	result, err := NewOverlayProcessor(makeDefinition(ficaContent)).decompose(ficaDoc, model.Patch{
 		Action:   "remove",
 		Selector: &model.Selector{Operation: "nonexistent-skill"},
 		Data:     map[string]any{"description": nil},
 	})
-	if err == nil {
-		t.Fatal("expected error for operation that matches no skill, got nil")
+	if err != nil {
+		t.Fatalf("expected no error for an absent operation, got: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 leaf patch, got %d", len(result))
 	}
 }
 

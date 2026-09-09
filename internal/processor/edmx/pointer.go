@@ -10,44 +10,45 @@ import (
 
 type Pointer interface {
 	Kind() string
+	IsNil() bool
 	Target() string
-	Element() jp.Expr
 	Schema() jp.Expr
+	Element() jp.Expr
 	Annotations() jp.Expr
 }
 
-func NewPointer(content xml2json.Document, selector *model.Selector) (Pointer, *errors.OverlayError) {
-	if len(selector.EnumType) > 0 {
-		return pointers.ForEnumType(content, selector)
+func NewPointer(content xml2json.Document, patch model.Patch) (Pointer, *errors.OverlayError) {
+	if len(patch.Selector.EnumType) > 0 {
+		return pointers.ForEnumType(content, patch)
 	}
 
-	if len(selector.Operation) > 0 {
-		if selector.ReturnType != nil && *selector.ReturnType {
-			return pointers.ForOperationReturnType(content, selector)
+	if len(patch.Selector.Operation) > 0 {
+		if patch.Selector.ReturnType != nil && *patch.Selector.ReturnType {
+			return pointers.ForOperationReturnType(content, patch)
 		}
 
-		if len(selector.Parameter) > 0 {
-			return pointers.ForOperationParameter(content, selector)
+		if len(patch.Selector.Parameter) > 0 {
+			return pointers.ForOperationParameter(content, patch)
 		}
 
-		return pointers.ForOperation(content, selector)
+		return pointers.ForOperation(content, patch)
 	}
 
-	if len(selector.EntitySet) > 0 {
-		return pointers.ForEntitySet(content, selector)
+	if len(patch.Selector.EntitySet) > 0 {
+		return pointers.ForEntitySet(content, patch)
 	}
 
-	if len(selector.EntityType) > 0 {
-		return pointers.ForEntityType(content, selector)
+	if len(patch.Selector.EntityType) > 0 {
+		return pointers.ForEntityType(content, patch)
 	}
 
-	if len(selector.ComplexType) > 0 {
-		return pointers.ForComplexType(content, selector)
+	if len(patch.Selector.ComplexType) > 0 {
+		return pointers.ForComplexType(content, patch)
 	}
 
-	if len(selector.Namespace) > 0 {
-		return pointers.ForNamespace(content, selector)
+	if len(patch.Selector.Namespace) > 0 {
+		return pointers.ForNamespace(content, patch)
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", patch.Selector)
 }

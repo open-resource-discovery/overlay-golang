@@ -49,7 +49,7 @@ func (self *OverlayProcessor) apply(patch model.Patch, content map[string]any) *
 		decomposed,
 		nil,
 		func(result *errors.OverlayError, dpatch model.Patch) *errors.OverlayError {
-			expression, err := self.resolve(content, dpatch.Selector)
+			expression, err := self.resolve(content, dpatch)
 			if err != nil {
 				return errors.Append(result, errors.WrapPrefix(err, "failed to resolve selector %+v", dpatch.Selector))
 			}
@@ -82,22 +82,23 @@ func (self *OverlayProcessor) remove(content map[string]any, expression jp.Expr)
 	)
 }
 
-func (self *OverlayProcessor) resolve(content map[string]any, selector *model.Selector) (jp.Expr, *errors.OverlayError) {
-	if selector.Root != nil && *selector.Root {
+func (self *OverlayProcessor) resolve(content map[string]any, patch model.Patch) (jp.Expr, *errors.OverlayError) {
+	if patch.Selector.Root != nil && *patch.Selector.Root {
 		return jputils.Root(), nil
 	}
 
-	if len(selector.JSONPath) > 0 {
-		return jputils.Parse(selector.JSONPath)
+	if len(patch.Selector.JSONPath) > 0 {
+		return jputils.Parse(patch.Selector.JSONPath)
 	}
 
-	if len(selector.Operation) > 0 {
-		expression := jputils.Expr("$", "skills", jputils.Eq("@.id", selector.Operation))
+	if len(patch.Selector.Operation) > 0 {
+		expression := jputils.Expr("$", "skills", jputils.Eq("@.id", patch.Selector.Operation))
+		_, found, err := jputils.Pinpoint(content, expression)
 
-		return expression, utils.Third(jputils.Pinpoint(content, expression))
+		return expression, utils.Ternary(!found && patch.Action == "remove", nil, err)
 	}
 
-	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", selector)
+	return nil, errors.Create(errors.Severity_Warning, "unsupported selector: %+v", patch.Selector)
 }
 
 func (self *OverlayProcessor) merge(content map[string]any, expression jp.Expr, value any) *errors.OverlayError {
@@ -138,7 +139,7 @@ func (self *OverlayProcessor) decompose(content map[string]any, patch model.Patc
 	}
 
 	result := make([]model.Patch, 0)
-	jsonpath, err := self.resolve(content, patch.Selector)
+	jsonpath, err := self.resolve(content, patch)
 	if err != nil {
 		return nil, errors.WrapPrefix(err, "failed to resolve selector %+v", patch.Selector)
 	}

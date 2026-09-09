@@ -5,6 +5,8 @@ package csdl
 import (
 	"testing"
 
+	"github.com/ohler55/ojg/jp"
+	"github.com/open-resource-discovery/overlay-golang/errors"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/testutils"
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/model"
@@ -13,10 +15,24 @@ import (
 // csdlDoc is the parsed ODataDemo CSDL JSON fixture loaded once for all tests.
 var csdlDoc = testutils.UnmarshalFixture[map[string]any]("testdata/odatademo.json")
 
+func testPatch(selector model.Selector) model.Patch {
+	return model.Patch{Selector: &selector}
+}
+
+func removePatch(selector model.Selector) model.Patch {
+	return model.Patch{Action: "remove", Selector: &selector}
+}
+
+// resolve invokes Expressions.Resolve with the patch shape required by the
+// production API. Tests that do not depend on an action use the zero value.
+func resolve(selector *model.Selector) (jp.Expr, *errors.OverlayError) {
+	return Expressions(0).Resolve(csdlDoc, testPatch(*selector))
+}
+
 // ---- Root -------------------------------------------------------------------
 
 func TestExpressions_Root_ReturnsExpressionThatResolvesToDocument(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{Root: utils.Ptr(true)})
+	expr, err := resolve(&model.Selector{Root: utils.Ptr(true)})
 	if err != nil {
 		t.Fatalf("Resolve(Root): %v", err)
 	}
@@ -27,22 +43,32 @@ func TestExpressions_Root_ReturnsExpressionThatResolvesToDocument(t *testing.T) 
 // ---- Namespace --------------------------------------------------------------
 
 func TestExpressions_Namespace_Found(t *testing.T) {
-	expression := testutils.AssertNoError(Expressions(0).Namespace(csdlDoc, "ODataDemo"))
+	expression := testutils.AssertNoError(Expressions(0).Namespace(csdlDoc, testPatch(model.Selector{Namespace: "ODataDemo"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"])
 }
 
 func TestExpressions_Namespace_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Namespace(csdlDoc, "NonExistent"); err == nil {
+	if _, err := Expressions(0).Namespace(csdlDoc, testPatch(model.Selector{Namespace: "NonExistent"})); err == nil {
 		t.Fatal("expected error for missing namespace, got nil")
+	}
+}
+
+func TestExpressions_Namespace_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).Namespace(csdlDoc, removePatch(model.Selector{Namespace: "NonExistent"}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent namespace, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match a namespace")
 	}
 }
 
 // ---- EntityType -------------------------------------------------------------
 
 func TestExpressions_EntityType_FullyQualified_Found(t *testing.T) {
-	expression := testutils.AssertNoError(Expressions(0).EntityType(csdlDoc, "ODataDemo.Product"))
+	expression := testutils.AssertNoError(Expressions(0).EntityType(csdlDoc, testPatch(model.Selector{EntityType: "ODataDemo.Product"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.Product")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["Product"])
@@ -51,21 +77,31 @@ func TestExpressions_EntityType_FullyQualified_Found(t *testing.T) {
 func TestExpressions_EntityType_UnqualifiedName_Found(t *testing.T) {
 	// Without a namespace prefix, a wildcard search is used; pinpoint resolves
 	// the wildcard to the concrete path of the unique match.
-	expression := testutils.AssertNoError(Expressions(0).EntityType(csdlDoc, "Product"))
+	expression := testutils.AssertNoError(Expressions(0).EntityType(csdlDoc, testPatch(model.Selector{EntityType: "Product"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.Product")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["Product"])
 }
 
 func TestExpressions_EntityType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).EntityType(csdlDoc, "ODataDemo.NonExistent"); err == nil {
+	if _, err := Expressions(0).EntityType(csdlDoc, testPatch(model.Selector{EntityType: "ODataDemo.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing entity type, got nil")
+	}
+}
+
+func TestExpressions_EntityType_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).EntityType(csdlDoc, removePatch(model.Selector{EntityType: "ODataDemo.NonExistent"}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent entity type, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an entity type")
 	}
 }
 
 func TestExpressions_EntityType_WrongKind_ReturnsError(t *testing.T) {
 	// Address is a ComplexType, not an EntityType.
-	if _, err := Expressions(0).EntityType(csdlDoc, "ODataDemo.Address"); err == nil {
+	if _, err := Expressions(0).EntityType(csdlDoc, testPatch(model.Selector{EntityType: "ODataDemo.Address"})); err == nil {
 		t.Fatal("expected error for wrong $Kind, got nil")
 	}
 }
@@ -73,21 +109,47 @@ func TestExpressions_EntityType_WrongKind_ReturnsError(t *testing.T) {
 // ---- EntityTypeProperty -----------------------------------------------------
 
 func TestExpressions_EntityTypeProperty_Found(t *testing.T) {
-	expression := testutils.AssertNoError(Expressions(0).EntityTypeProperty(csdlDoc, "ODataDemo.Product", "Description"))
+	expression := testutils.AssertNoError(Expressions(0).EntityTypeProperty(csdlDoc, testPatch(model.Selector{EntityType: "ODataDemo.Product", PropertyType: "Description"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.Product.Description")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["Product"].(map[string]any)["Description"])
 }
 
 func TestExpressions_EntityTypeProperty_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).EntityTypeProperty(csdlDoc, "ODataDemo.Product", "NonExistent"); err == nil {
+	if _, err := Expressions(0).EntityTypeProperty(csdlDoc, testPatch(model.Selector{EntityType: "ODataDemo.Product", PropertyType: "NonExistent"})); err == nil {
 		t.Fatal("expected error for missing property, got nil")
+	}
+}
+
+func TestExpressions_EntityTypeProperty_RemoveWithAbsentEntityType_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).EntityTypeProperty(csdlDoc, removePatch(model.Selector{
+		EntityType:   "ODataDemo.NonExistent",
+		PropertyType: "Description",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing a property of an absent entity type, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an entity type property")
+	}
+}
+
+func TestExpressions_EntityTypeProperty_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).EntityTypeProperty(csdlDoc, removePatch(model.Selector{
+		EntityType:   "ODataDemo.Product",
+		PropertyType: "NonExistent",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent entity type property, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an entity type property")
 	}
 }
 
 func TestExpressions_EntityTypeProperty_WrongParentKind_ReturnsError(t *testing.T) {
 	// Address is a ComplexType, not an EntityType.
-	if _, err := Expressions(0).EntityTypeProperty(csdlDoc, "ODataDemo.Address", "Street"); err == nil {
+	if _, err := Expressions(0).EntityTypeProperty(csdlDoc, testPatch(model.Selector{EntityType: "ODataDemo.Address", PropertyType: "Street"})); err == nil {
 		t.Fatal("expected error when parent is not an EntityType, got nil")
 	}
 }
@@ -95,21 +157,31 @@ func TestExpressions_EntityTypeProperty_WrongParentKind_ReturnsError(t *testing.
 // ---- ComplexType ------------------------------------------------------------
 
 func TestExpressions_ComplexType_FullyQualified_Found(t *testing.T) {
-	expression := testutils.AssertNoError(Expressions(0).ComplexType(csdlDoc, "ODataDemo.Address"))
+	expression := testutils.AssertNoError(Expressions(0).ComplexType(csdlDoc, testPatch(model.Selector{ComplexType: "ODataDemo.Address"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.Address")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["Address"])
 }
 
 func TestExpressions_ComplexType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).ComplexType(csdlDoc, "ODataDemo.NonExistent"); err == nil {
+	if _, err := Expressions(0).ComplexType(csdlDoc, testPatch(model.Selector{ComplexType: "ODataDemo.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing complex type, got nil")
+	}
+}
+
+func TestExpressions_ComplexType_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).ComplexType(csdlDoc, removePatch(model.Selector{ComplexType: "ODataDemo.NonExistent"}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent complex type, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match a complex type")
 	}
 }
 
 func TestExpressions_ComplexType_WrongKind_ReturnsError(t *testing.T) {
 	// Product is an EntityType, not a ComplexType.
-	if _, err := Expressions(0).ComplexType(csdlDoc, "ODataDemo.Product"); err == nil {
+	if _, err := Expressions(0).ComplexType(csdlDoc, testPatch(model.Selector{ComplexType: "ODataDemo.Product"})); err == nil {
 		t.Fatal("expected error for wrong $Kind, got nil")
 	}
 }
@@ -117,21 +189,47 @@ func TestExpressions_ComplexType_WrongKind_ReturnsError(t *testing.T) {
 // ---- ComplexTypeProperty ----------------------------------------------------
 
 func TestExpressions_ComplexTypeProperty_Found(t *testing.T) {
-	expression := testutils.AssertNoError(Expressions(0).ComplexTypeProperty(csdlDoc, "ODataDemo.Address", "Street"))
+	expression := testutils.AssertNoError(Expressions(0).ComplexTypeProperty(csdlDoc, testPatch(model.Selector{ComplexType: "ODataDemo.Address", PropertyType: "Street"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.Address.Street")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["Address"].(map[string]any)["Street"])
 }
 
 func TestExpressions_ComplexTypeProperty_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).ComplexTypeProperty(csdlDoc, "ODataDemo.Address", "NonExistent"); err == nil {
+	if _, err := Expressions(0).ComplexTypeProperty(csdlDoc, testPatch(model.Selector{ComplexType: "ODataDemo.Address", PropertyType: "NonExistent"})); err == nil {
 		t.Fatal("expected error for missing property, got nil")
+	}
+}
+
+func TestExpressions_ComplexTypeProperty_RemoveWithAbsentComplexType_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).ComplexTypeProperty(csdlDoc, removePatch(model.Selector{
+		ComplexType:  "ODataDemo.NonExistent",
+		PropertyType: "Street",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing a property of an absent complex type, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match a complex type property")
+	}
+}
+
+func TestExpressions_ComplexTypeProperty_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).ComplexTypeProperty(csdlDoc, removePatch(model.Selector{
+		ComplexType:  "ODataDemo.Address",
+		PropertyType: "NonExistent",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent complex type property, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match a complex type property")
 	}
 }
 
 func TestExpressions_ComplexTypeProperty_WrongParentKind_ReturnsError(t *testing.T) {
 	// Product is an EntityType, not a ComplexType.
-	if _, err := Expressions(0).ComplexTypeProperty(csdlDoc, "ODataDemo.Product", "Street"); err == nil {
+	if _, err := Expressions(0).ComplexTypeProperty(csdlDoc, testPatch(model.Selector{ComplexType: "ODataDemo.Product", PropertyType: "Street"})); err == nil {
 		t.Fatal("expected error when parent is not an EntityType, got nil")
 	}
 }
@@ -140,21 +238,31 @@ func TestExpressions_ComplexTypeProperty_WrongParentKind_ReturnsError(t *testing
 
 func TestExpressions_Operation_Function_FullyQualified_Found(t *testing.T) {
 	// ProductsByRating is stored as an array per the OData CSDL JSON spec.
-	expression := testutils.AssertNoError(Expressions(0).Operation(csdlDoc, "ODataDemo.ProductsByRating"))
+	expression := testutils.AssertNoError(Expressions(0).Operation(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.ProductsByRating"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.ProductsByRating[0]")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["ProductsByRating"].([]any)[0])
 }
 
 func TestExpressions_Operation_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Operation(csdlDoc, "ODataDemo.NonExistent"); err == nil {
+	if _, err := Expressions(0).Operation(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing operation, got nil")
+	}
+}
+
+func TestExpressions_Operation_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).Operation(csdlDoc, removePatch(model.Selector{Operation: "ODataDemo.NonExistent"}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent operation, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an operation")
 	}
 }
 
 func TestExpressions_Operation_WrongKind_ReturnsError(t *testing.T) {
 	// Product is an EntityType, not an Action or Function.
-	if _, err := Expressions(0).Operation(csdlDoc, "ODataDemo.Product"); err == nil {
+	if _, err := Expressions(0).Operation(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.Product"})); err == nil {
 		t.Fatal("expected error for wrong $Kind, got nil")
 	}
 }
@@ -162,21 +270,69 @@ func TestExpressions_Operation_WrongKind_ReturnsError(t *testing.T) {
 // ---- OperationParameter -----------------------------------------------------
 
 func TestExpressions_OperationParameter_Found(t *testing.T) {
-	expression := testutils.AssertNoError(Expressions(0).OperationParameter(csdlDoc, "ODataDemo.ProductsByRating", "Rating"))
+	expression := testutils.AssertNoError(Expressions(0).OperationParameter(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.ProductsByRating", Parameter: "Rating"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.ProductsByRating[0]['$Parameter'][?(@['$Name'] == 'Rating')]")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["ProductsByRating"].([]any)[0].(map[string]any)["$Parameter"].([]any)[0])
 }
 
 func TestExpressions_OperationParameter_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).OperationParameter(csdlDoc, "ODataDemo.ProductsByRating", "NonExistent"); err == nil {
+	if _, err := Expressions(0).OperationParameter(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.ProductsByRating", Parameter: "NonExistent"})); err == nil {
 		t.Fatal("expected error for missing parameter, got nil")
 	}
 }
 
+func TestExpressions_OperationParameter_RemoveAbsentOperation_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).OperationParameter(csdlDoc, removePatch(model.Selector{
+		Operation: "ODataDemo.NonExistent",
+		Parameter: "Rating",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing a parameter of an absent operation, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an operation parameter")
+	}
+}
+
+func TestExpressions_OperationParameter_RemoveAbsentParameter_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).OperationParameter(csdlDoc, removePatch(model.Selector{
+		Operation: "ODataDemo.ProductsByRating",
+		Parameter: "NonExistent",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent operation parameter, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an operation parameter")
+	}
+}
+
 func TestExpressions_OperationParameter_ParentNotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).OperationParameter(csdlDoc, "ODataDemo.NonExistent", "Rating"); err == nil {
+	if _, err := Expressions(0).OperationParameter(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.NonExistent", Parameter: "Rating"})); err == nil {
 		t.Fatal("expected error when parent operation does not exist, got nil")
+	}
+}
+
+// ---- OperationReturnType ----------------------------------------------------
+
+func TestExpressions_OperationReturnType_Found(t *testing.T) {
+	expression := testutils.AssertNoError(Expressions(0).OperationReturnType(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.ProductsByRating", ReturnType: utils.Ptr(true)})))
+
+	testutils.AssertExpr(t, expression, "$.ODataDemo.ProductsByRating[0]['$ReturnType']")
+	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["ProductsByRating"].([]any)[0].(map[string]any)["$ReturnType"])
+}
+
+func TestExpressions_OperationReturnType_RemoveAbsentOperation_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).OperationReturnType(csdlDoc, removePatch(model.Selector{
+		Operation:  "ODataDemo.NonExistent",
+		ReturnType: utils.Ptr(true),
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing the return type of an absent operation, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an operation return type")
 	}
 }
 
@@ -184,7 +340,7 @@ func TestExpressions_OperationParameter_ParentNotFound_ReturnsError(t *testing.T
 
 func TestExpressions_EntitySet_ShortForm_Found(t *testing.T) {
 	// Short form: just the entity set name, no namespace prefix.
-	expression := testutils.AssertNoError(Expressions(0).EntitySet(csdlDoc, "Products"))
+	expression := testutils.AssertNoError(Expressions(0).EntitySet(csdlDoc, testPatch(model.Selector{EntitySet: "Products"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.DemoService.Products")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["DemoService"].(map[string]any)["Products"])
@@ -192,7 +348,7 @@ func TestExpressions_EntitySet_ShortForm_Found(t *testing.T) {
 
 func TestExpressions_EntitySet_NamespaceAndEntitySet_Found(t *testing.T) {
 	// Medium form: <namespace>.<entity-set>
-	expression := testutils.AssertNoError(Expressions(0).EntitySet(csdlDoc, "ODataDemo.Products"))
+	expression := testutils.AssertNoError(Expressions(0).EntitySet(csdlDoc, testPatch(model.Selector{EntitySet: "ODataDemo.Products"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.DemoService.Products")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["DemoService"].(map[string]any)["Products"])
@@ -200,21 +356,31 @@ func TestExpressions_EntitySet_NamespaceAndEntitySet_Found(t *testing.T) {
 
 func TestExpressions_EntitySet_FullyQualified_Found(t *testing.T) {
 	// Full form: <namespace>.<entity-container>.<entity-set>
-	expression := testutils.AssertNoError(Expressions(0).EntitySet(csdlDoc, "ODataDemo.DemoService.Products"))
+	expression := testutils.AssertNoError(Expressions(0).EntitySet(csdlDoc, testPatch(model.Selector{EntitySet: "ODataDemo.DemoService.Products"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.DemoService.Products")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["DemoService"].(map[string]any)["Products"])
 }
 
 func TestExpressions_EntitySet_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).EntitySet(csdlDoc, "NonExistent"); err == nil {
+	if _, err := Expressions(0).EntitySet(csdlDoc, testPatch(model.Selector{EntitySet: "NonExistent"})); err == nil {
 		t.Fatal("expected error for missing entity set, got nil")
+	}
+}
+
+func TestExpressions_EntitySet_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).EntitySet(csdlDoc, removePatch(model.Selector{EntitySet: "NonExistent"}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent entity set, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an entity set")
 	}
 }
 
 func TestExpressions_EntitySet_WrongKind_ReturnsError(t *testing.T) {
 	// MainSupplier exists in the EntityContainer but is a singleton ($Collection != true).
-	if _, err := Expressions(0).EntitySet(csdlDoc, "ODataDemo.MainSupplier"); err == nil {
+	if _, err := Expressions(0).EntitySet(csdlDoc, testPatch(model.Selector{EntitySet: "ODataDemo.MainSupplier"})); err == nil {
 		t.Fatal("expected error when element is not an entity set, got nil")
 	}
 }
@@ -229,7 +395,7 @@ func TestExpressions_EntityType_Ambiguous_ReturnsError(t *testing.T) {
 		"ns.b": map[string]any{"Order": map[string]any{"$Kind": "EntityType"}},
 	}
 
-	if _, err := Expressions(0).EntityType(ambiguous, "Order"); err == nil {
+	if _, err := Expressions(0).EntityType(ambiguous, testPatch(model.Selector{EntityType: "Order"})); err == nil {
 		t.Fatal("expected error for ambiguous match, got nil")
 	}
 }
@@ -241,7 +407,7 @@ func TestExpressions_ComplexType_Ambiguous_ReturnsError(t *testing.T) {
 		"ns.b": map[string]any{"Address": map[string]any{"$Kind": "ComplexType"}},
 	}
 
-	if _, err := Expressions(0).ComplexType(ambiguous, "Address"); err == nil {
+	if _, err := Expressions(0).ComplexType(ambiguous, testPatch(model.Selector{ComplexType: "Address"})); err == nil {
 		t.Fatal("expected error for ambiguous match, got nil")
 	}
 }
@@ -264,7 +430,7 @@ func TestExpressions_EntitySet_Ambiguous_ReturnsError(t *testing.T) {
 		},
 	}
 
-	if _, err := Expressions(0).EntitySet(ambiguous, "Orders"); err == nil {
+	if _, err := Expressions(0).EntitySet(ambiguous, testPatch(model.Selector{EntitySet: "Orders"})); err == nil {
 		t.Fatal("expected error for ambiguous match, got nil")
 	}
 }
@@ -285,7 +451,7 @@ func TestExpressions_EntitySet_MediumForm_Ambiguous_ReturnsError(t *testing.T) {
 		},
 	}
 
-	if _, err := Expressions(0).EntitySet(ambiguous, "ns.a.Reports"); err == nil {
+	if _, err := Expressions(0).EntitySet(ambiguous, testPatch(model.Selector{EntitySet: "ns.a.Reports"})); err == nil {
 		t.Fatal("expected error for ambiguous medium-form match, got nil")
 	}
 }
@@ -295,7 +461,7 @@ func TestExpressions_EntitySet_MediumForm_Ambiguous_ReturnsError(t *testing.T) {
 func TestExpressions_ComplexType_UnqualifiedName_Found(t *testing.T) {
 	// Without a namespace prefix, a wildcard search is used; pinpoint resolves
 	// the wildcard to the concrete path of the unique match.
-	expression := testutils.AssertNoError(Expressions(0).ComplexType(csdlDoc, "Address"))
+	expression := testutils.AssertNoError(Expressions(0).ComplexType(csdlDoc, testPatch(model.Selector{ComplexType: "Address"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.Address")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["Address"])
@@ -304,7 +470,7 @@ func TestExpressions_ComplexType_UnqualifiedName_Found(t *testing.T) {
 // ---- EnumType ---------------------------------------------------------------
 
 func TestExpressions_EnumType_FullyQualified_Found(t *testing.T) {
-	expression := testutils.AssertNoError(Expressions(0).EnumType(csdlDoc, "ODataDemo.FileAccess"))
+	expression := testutils.AssertNoError(Expressions(0).EnumType(csdlDoc, testPatch(model.Selector{EnumType: "ODataDemo.FileAccess"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.FileAccess")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["FileAccess"])
@@ -312,21 +478,31 @@ func TestExpressions_EnumType_FullyQualified_Found(t *testing.T) {
 
 func TestExpressions_EnumType_UnqualifiedName_Found(t *testing.T) {
 	// Without a namespace prefix, the wildcard path must resolve to the unique match.
-	expression := testutils.AssertNoError(Expressions(0).EnumType(csdlDoc, "FileAccess"))
+	expression := testutils.AssertNoError(Expressions(0).EnumType(csdlDoc, testPatch(model.Selector{EnumType: "FileAccess"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.FileAccess")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["FileAccess"])
 }
 
 func TestExpressions_EnumType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).EnumType(csdlDoc, "ODataDemo.NonExistent"); err == nil {
+	if _, err := Expressions(0).EnumType(csdlDoc, testPatch(model.Selector{EnumType: "ODataDemo.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing enum type, got nil")
+	}
+}
+
+func TestExpressions_EnumType_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).EnumType(csdlDoc, removePatch(model.Selector{EnumType: "ODataDemo.NonExistent"}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent enum type, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an enum type")
 	}
 }
 
 func TestExpressions_EnumType_WrongKind_ReturnsError(t *testing.T) {
 	// Product is an EntityType, not an EnumType.
-	if _, err := Expressions(0).EnumType(csdlDoc, "ODataDemo.Product"); err == nil {
+	if _, err := Expressions(0).EnumType(csdlDoc, testPatch(model.Selector{EnumType: "ODataDemo.Product"})); err == nil {
 		t.Fatal("expected error for wrong $Kind, got nil")
 	}
 }
@@ -337,20 +513,43 @@ func TestExpressions_EnumTypeMember_Found(t *testing.T) {
 	// EnumTypeMember returns the parent expression (the EnumType path), not a
 	// child path — per the OData CSDL JSON spec, member values live inside the
 	// EnumType object itself.
-	expression := testutils.AssertNoError(Expressions(0).EnumTypeMember(csdlDoc, "ODataDemo.FileAccess", "Read"))
+	expression := testutils.AssertNoError(Expressions(0).EnumTypeMember(csdlDoc, testPatch(model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "Read"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.FileAccess")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["FileAccess"])
 }
 
 func TestExpressions_EnumTypeMember_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).EnumTypeMember(csdlDoc, "ODataDemo.FileAccess", "NonExistent"); err == nil {
+	if _, err := Expressions(0).EnumTypeMember(csdlDoc, testPatch(model.Selector{EnumType: "ODataDemo.FileAccess", PropertyType: "NonExistent"})); err == nil {
 		t.Fatal("expected error for missing enum member, got nil")
 	}
 }
 
+func TestExpressions_EnumTypeMember_RemoveWithAbsentEnumType_DoesNotReturnError(t *testing.T) {
+	expression, err := Expressions(0).EnumTypeMember(csdlDoc, removePatch(model.Selector{
+		EnumType:     "ODataDemo.NonExistent",
+		PropertyType: "Read",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing a member of an absent enum type, got: %v", err)
+	}
+	if expression.Has(csdlDoc) {
+		t.Fatal("expected selector not to match an enum type member")
+	}
+}
+
+func TestExpressions_EnumTypeMember_RemoveAbsent_DoesNotReturnError(t *testing.T) {
+	_, err := Expressions(0).EnumTypeMember(csdlDoc, removePatch(model.Selector{
+		EnumType:     "ODataDemo.FileAccess",
+		PropertyType: "NonExistent",
+	}))
+	if err != nil {
+		t.Fatalf("expected no error when removing an absent enum type member, got: %v", err)
+	}
+}
+
 func TestExpressions_EnumTypeMember_ParentNotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).EnumTypeMember(csdlDoc, "ODataDemo.NonExistent", "Read"); err == nil {
+	if _, err := Expressions(0).EnumTypeMember(csdlDoc, testPatch(model.Selector{EnumType: "ODataDemo.NonExistent", PropertyType: "Read"})); err == nil {
 		t.Fatal("expected error when parent enum type does not exist, got nil")
 	}
 }
@@ -358,7 +557,7 @@ func TestExpressions_EnumTypeMember_ParentNotFound_ReturnsError(t *testing.T) {
 // ---- Resolve ----------------------------------------------------------------
 
 func TestResolve_Root_ReturnsRootExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{Root: utils.Ptr(true)})
+	expr, err := resolve(&model.Selector{Root: utils.Ptr(true)})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -367,7 +566,7 @@ func TestResolve_Root_ReturnsRootExpression(t *testing.T) {
 }
 
 func TestResolve_JSONPath_ReturnsMatchingExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{JSONPath: "$.ODataDemo.Product"})
+	expr, err := resolve(&model.Selector{JSONPath: "$.ODataDemo.Product"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -375,13 +574,13 @@ func TestResolve_JSONPath_ReturnsMatchingExpression(t *testing.T) {
 }
 
 func TestResolve_JSONPath_InvalidSyntax_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{JSONPath: "$$[invalid"}); err == nil {
+	if _, err := resolve(&model.Selector{JSONPath: "$$[invalid"}); err == nil {
 		t.Fatal("expected error for invalid JSONPath, got nil")
 	}
 }
 
 func TestResolve_Operation_ReturnsOperationExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{Operation: "ODataDemo.ProductsByRating"})
+	expr, err := resolve(&model.Selector{Operation: "ODataDemo.ProductsByRating"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -389,13 +588,13 @@ func TestResolve_Operation_ReturnsOperationExpression(t *testing.T) {
 }
 
 func TestResolve_Operation_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{Operation: "ODataDemo.NonExistent"}); err == nil {
+	if _, err := resolve(&model.Selector{Operation: "ODataDemo.NonExistent"}); err == nil {
 		t.Fatal("expected error for missing operation, got nil")
 	}
 }
 
 func TestResolve_OperationParameter_ReturnsParameterExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	expr, err := resolve(&model.Selector{
 		Operation: "ODataDemo.ProductsByRating",
 		Parameter: "Rating",
 	})
@@ -406,7 +605,7 @@ func TestResolve_OperationParameter_ReturnsParameterExpression(t *testing.T) {
 }
 
 func TestResolve_OperationParameter_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	if _, err := resolve(&model.Selector{
 		Operation: "ODataDemo.ProductsByRating",
 		Parameter: "NonExistent",
 	}); err == nil {
@@ -415,7 +614,7 @@ func TestResolve_OperationParameter_NotFound_ReturnsError(t *testing.T) {
 }
 
 func TestResolve_EntityType_ReturnsEntityTypeExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{EntityType: "ODataDemo.Product"})
+	expr, err := resolve(&model.Selector{EntityType: "ODataDemo.Product"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -423,13 +622,13 @@ func TestResolve_EntityType_ReturnsEntityTypeExpression(t *testing.T) {
 }
 
 func TestResolve_EntityType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{EntityType: "ODataDemo.NonExistent"}); err == nil {
+	if _, err := resolve(&model.Selector{EntityType: "ODataDemo.NonExistent"}); err == nil {
 		t.Fatal("expected error for missing entity type, got nil")
 	}
 }
 
 func TestResolve_EntityTypeProperty_ReturnsPropertyExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	expr, err := resolve(&model.Selector{
 		EntityType:   "ODataDemo.Product",
 		PropertyType: "Description",
 	})
@@ -440,7 +639,7 @@ func TestResolve_EntityTypeProperty_ReturnsPropertyExpression(t *testing.T) {
 }
 
 func TestResolve_EntityTypeProperty_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	if _, err := resolve(&model.Selector{
 		EntityType:   "ODataDemo.Product",
 		PropertyType: "NonExistent",
 	}); err == nil {
@@ -449,7 +648,7 @@ func TestResolve_EntityTypeProperty_NotFound_ReturnsError(t *testing.T) {
 }
 
 func TestResolve_ComplexType_ReturnsComplexTypeExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{ComplexType: "ODataDemo.Address"})
+	expr, err := resolve(&model.Selector{ComplexType: "ODataDemo.Address"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -457,13 +656,13 @@ func TestResolve_ComplexType_ReturnsComplexTypeExpression(t *testing.T) {
 }
 
 func TestResolve_ComplexType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{ComplexType: "ODataDemo.NonExistent"}); err == nil {
+	if _, err := resolve(&model.Selector{ComplexType: "ODataDemo.NonExistent"}); err == nil {
 		t.Fatal("expected error for missing complex type, got nil")
 	}
 }
 
 func TestResolve_ComplexTypeProperty_ReturnsPropertyExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	expr, err := resolve(&model.Selector{
 		ComplexType:  "ODataDemo.Address",
 		PropertyType: "Street",
 	})
@@ -474,7 +673,7 @@ func TestResolve_ComplexTypeProperty_ReturnsPropertyExpression(t *testing.T) {
 }
 
 func TestResolve_ComplexTypeProperty_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	if _, err := resolve(&model.Selector{
 		ComplexType:  "ODataDemo.Address",
 		PropertyType: "NonExistent",
 	}); err == nil {
@@ -483,7 +682,7 @@ func TestResolve_ComplexTypeProperty_NotFound_ReturnsError(t *testing.T) {
 }
 
 func TestResolve_EnumType_ReturnsEnumTypeExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{EnumType: "ODataDemo.FileAccess"})
+	expr, err := resolve(&model.Selector{EnumType: "ODataDemo.FileAccess"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -491,14 +690,14 @@ func TestResolve_EnumType_ReturnsEnumTypeExpression(t *testing.T) {
 }
 
 func TestResolve_EnumType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{EnumType: "ODataDemo.NonExistent"}); err == nil {
+	if _, err := resolve(&model.Selector{EnumType: "ODataDemo.NonExistent"}); err == nil {
 		t.Fatal("expected error for missing enum type, got nil")
 	}
 }
 
 func TestResolve_EnumTypeMember_ReturnsEnumTypeExpression(t *testing.T) {
 	// EnumTypeMember returns the parent EnumType expression per the OData spec.
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	expr, err := resolve(&model.Selector{
 		EnumType:     "ODataDemo.FileAccess",
 		PropertyType: "Read",
 	})
@@ -509,7 +708,7 @@ func TestResolve_EnumTypeMember_ReturnsEnumTypeExpression(t *testing.T) {
 }
 
 func TestResolve_EnumTypeMember_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{
+	if _, err := resolve(&model.Selector{
 		EnumType:     "ODataDemo.FileAccess",
 		PropertyType: "NonExistent",
 	}); err == nil {
@@ -518,7 +717,7 @@ func TestResolve_EnumTypeMember_NotFound_ReturnsError(t *testing.T) {
 }
 
 func TestResolve_EntitySet_ReturnsEntitySetExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{EntitySet: "ODataDemo.DemoService.Products"})
+	expr, err := resolve(&model.Selector{EntitySet: "ODataDemo.DemoService.Products"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -526,13 +725,13 @@ func TestResolve_EntitySet_ReturnsEntitySetExpression(t *testing.T) {
 }
 
 func TestResolve_EntitySet_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{EntitySet: "NonExistent"}); err == nil {
+	if _, err := resolve(&model.Selector{EntitySet: "NonExistent"}); err == nil {
 		t.Fatal("expected error for missing entity set, got nil")
 	}
 }
 
 func TestResolve_Namespace_ReturnsNamespaceExpression(t *testing.T) {
-	expr, err := Expressions(0).Resolve(csdlDoc, &model.Selector{Namespace: "ODataDemo"})
+	expr, err := resolve(&model.Selector{Namespace: "ODataDemo"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -540,13 +739,13 @@ func TestResolve_Namespace_ReturnsNamespaceExpression(t *testing.T) {
 }
 
 func TestResolve_Namespace_NotFound_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{Namespace: "NonExistent"}); err == nil {
+	if _, err := resolve(&model.Selector{Namespace: "NonExistent"}); err == nil {
 		t.Fatal("expected error for missing namespace, got nil")
 	}
 }
 
 func TestResolve_UnsupportedSelector_ReturnsError(t *testing.T) {
-	if _, err := Expressions(0).Resolve(csdlDoc, &model.Selector{}); err == nil {
+	if _, err := resolve(&model.Selector{}); err == nil {
 		t.Fatal("expected error for empty/unsupported selector, got nil")
 	}
 }

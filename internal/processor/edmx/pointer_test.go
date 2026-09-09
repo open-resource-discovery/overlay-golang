@@ -13,6 +13,10 @@ import (
 
 var catalogDoc = testutils.UnmarshalFixture[xml2json.Document]("testdata/catalogservice.xml")
 
+func pointerPatch(selector model.Selector) model.Patch {
+	return model.Patch{Selector: &selector}
+}
+
 // edmxDoc wraps one or more Schema elements into a minimal EDMX document.
 func edmxDoc(schemasXML string) xml2json.Document {
 	raw := `<?xml version="1.0" encoding="utf-8"?>
@@ -33,7 +37,7 @@ func TestNewPointer_EnumType_Kind(t *testing.T) {
     <EnumType Name="Status"/>
   </Schema>`)
 
-	p, err := NewPointer(doc, &model.Selector{EnumType: "My.Service.Status"})
+	p, err := NewPointer(doc, pointerPatch(model.Selector{EnumType: "My.Service.Status"}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -43,7 +47,7 @@ func TestNewPointer_EnumType_Kind(t *testing.T) {
 }
 
 func TestNewPointer_EnumType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{EnumType: "CatalogService.NonExistent"}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{EnumType: "CatalogService.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing enum type, got nil")
 	}
 }
@@ -51,7 +55,7 @@ func TestNewPointer_EnumType_NotFound_ReturnsError(t *testing.T) {
 // ─── Operation branch — Operation only ───────────────────────────────────────
 
 func TestNewPointer_Operation_Kind(t *testing.T) {
-	p, err := NewPointer(catalogDoc, &model.Selector{Operation: "CatalogService.getBooks"})
+	p, err := NewPointer(catalogDoc, pointerPatch(model.Selector{Operation: "CatalogService.getBooks"}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -63,7 +67,7 @@ func TestNewPointer_Operation_Kind(t *testing.T) {
 // ─── Operation branch — ReturnType ───────────────────────────────────────────
 
 func TestNewPointer_OperationReturnType_Kind(t *testing.T) {
-	p, err := NewPointer(catalogDoc, &model.Selector{Operation: "CatalogService.getBooks", ReturnType: utils.Ptr(true)})
+	p, err := NewPointer(catalogDoc, pointerPatch(model.Selector{Operation: "CatalogService.getBooks", ReturnType: utils.Ptr(true)}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -73,7 +77,7 @@ func TestNewPointer_OperationReturnType_Kind(t *testing.T) {
 }
 
 func TestNewPointer_OperationReturnType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{Operation: "CatalogService.NonExistent", ReturnType: utils.Ptr(true)}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{Operation: "CatalogService.NonExistent", ReturnType: utils.Ptr(true)})); err == nil {
 		t.Fatal("expected error for missing operation return type, got nil")
 	}
 }
@@ -82,7 +86,7 @@ func TestNewPointer_OperationReturnType_NotFound_ReturnsError(t *testing.T) {
 
 func TestNewPointer_OperationParameter_Kind(t *testing.T) {
 	// getBookPriorityById has a single overload with parameter "id"
-	p, err := NewPointer(catalogDoc, &model.Selector{Operation: "CatalogService.getBookPriorityById", Parameter: "id"})
+	p, err := NewPointer(catalogDoc, pointerPatch(model.Selector{Operation: "CatalogService.getBookPriorityById", Parameter: "id"}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -92,7 +96,7 @@ func TestNewPointer_OperationParameter_Kind(t *testing.T) {
 }
 
 func TestNewPointer_OperationParameter_NotFound_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{Operation: "CatalogService.getBookPriorityById", Parameter: "nonExistent"}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{Operation: "CatalogService.getBookPriorityById", Parameter: "nonExistent"})); err == nil {
 		t.Fatal("expected error for missing parameter, got nil")
 	}
 }
@@ -100,7 +104,7 @@ func TestNewPointer_OperationParameter_NotFound_ReturnsError(t *testing.T) {
 // ─── EntitySet branch ─────────────────────────────────────────────────────────
 
 func TestNewPointer_EntitySet_Kind(t *testing.T) {
-	p, err := NewPointer(catalogDoc, &model.Selector{EntitySet: "CatalogService.EntityContainer.Books"})
+	p, err := NewPointer(catalogDoc, pointerPatch(model.Selector{EntitySet: "CatalogService.EntityContainer.Books"}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -110,7 +114,7 @@ func TestNewPointer_EntitySet_Kind(t *testing.T) {
 }
 
 func TestNewPointer_EntitySet_NotFound_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{EntitySet: "CatalogService.EntityContainer.NonExistent"}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{EntitySet: "CatalogService.EntityContainer.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing entity set, got nil")
 	}
 }
@@ -118,7 +122,7 @@ func TestNewPointer_EntitySet_NotFound_ReturnsError(t *testing.T) {
 // ─── EntityType branch ────────────────────────────────────────────────────────
 
 func TestNewPointer_EntityType_Kind(t *testing.T) {
-	p, err := NewPointer(catalogDoc, &model.Selector{EntityType: "CatalogService.Books"})
+	p, err := NewPointer(catalogDoc, pointerPatch(model.Selector{EntityType: "CatalogService.Books"}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -128,7 +132,7 @@ func TestNewPointer_EntityType_Kind(t *testing.T) {
 }
 
 func TestNewPointer_EntityType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{EntityType: "CatalogService.NonExistent"}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{EntityType: "CatalogService.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing entity type, got nil")
 	}
 }
@@ -136,7 +140,7 @@ func TestNewPointer_EntityType_NotFound_ReturnsError(t *testing.T) {
 // ─── ComplexType branch ───────────────────────────────────────────────────────
 
 func TestNewPointer_ComplexType_NotFound_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{ComplexType: "CatalogService.NonExistent"}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{ComplexType: "CatalogService.NonExistent"})); err == nil {
 		t.Fatal("expected error for missing complex type, got nil")
 	}
 }
@@ -144,7 +148,7 @@ func TestNewPointer_ComplexType_NotFound_ReturnsError(t *testing.T) {
 // ─── Namespace branch ─────────────────────────────────────────────────────────
 
 func TestNewPointer_Namespace_Kind(t *testing.T) {
-	p, err := NewPointer(catalogDoc, &model.Selector{Namespace: "CatalogService"})
+	p, err := NewPointer(catalogDoc, pointerPatch(model.Selector{Namespace: "CatalogService"}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,7 +158,7 @@ func TestNewPointer_Namespace_Kind(t *testing.T) {
 }
 
 func TestNewPointer_Namespace_NotFound_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{Namespace: "NonExistent"}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{Namespace: "NonExistent"})); err == nil {
 		t.Fatal("expected error for missing namespace, got nil")
 	}
 }
@@ -162,7 +166,7 @@ func TestNewPointer_Namespace_NotFound_ReturnsError(t *testing.T) {
 // ─── Unsupported selector ─────────────────────────────────────────────────────
 
 func TestNewPointer_EmptySelector_ReturnsError(t *testing.T) {
-	if _, err := NewPointer(catalogDoc, &model.Selector{}); err == nil {
+	if _, err := NewPointer(catalogDoc, pointerPatch(model.Selector{})); err == nil {
 		t.Fatal("expected error for empty selector, got nil")
 	}
 }
