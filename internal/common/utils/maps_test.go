@@ -178,6 +178,15 @@ func TestRemap(t *testing.T) {
 		}
 	})
 
+	t.Run("nil map returns nil map", func(t *testing.T) {
+		got := Remap(nil, func(k string, v int) (string, int) {
+			return k, v
+		})
+		if got != nil {
+			t.Fatalf("expected nil map, got %v", got)
+		}
+	})
+
 	t.Run("empty map returns empty map", func(t *testing.T) {
 		got := Remap(map[string]int{}, func(k string, v int) (string, int) {
 			return k, v

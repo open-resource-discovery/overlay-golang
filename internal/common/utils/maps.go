@@ -46,7 +46,7 @@ func Projection(data map[string]any, keys []string) map[string]any {
 }
 
 func Remap[IK comparable, IV any, OK comparable, OV any](value map[IK]IV, remapper func(IK, IV) (OK, OV)) map[OK]OV {
-	result := make(map[OK]OV, len(value))
+	result := Ternary(value == nil, nil, make(map[OK]OV, len(value)))
 
 	for k, v := range value {
 		rk, rv := remapper(k, v)
