@@ -7,6 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [unreleased]
 
+## [[0.0.3](https://github.com/open-resource-discovery/overlay-golang/releases/tag/v0.0.3)] - 2026-09-11
+
+- Ensure that 'remove of missing' is no-op by @mlakov in https://github.com/open-resource-discovery/overlay-golang/pull/27
+- Update golang.org/x/exp digest to 85c1c22 by @renovate https://github.com/open-resource-discovery/overlay-golang/pull/28
+- Update module github.com/ohler55/ojg to v1.28.6 by @renovate https://github.com/open-resource-discovery/overlay-golang/pull/30
+- Add support for CSDL syntaxed enum type member annoations by @mlakov in https://github.com/open-resource-discovery/overlay-golang/pull/30
+
 ## [[0.0.2](https://github.com/open-resource-discovery/overlay-golang/releases/tag/v0.0.2)] - 2026-09-08
 
 - Reject removing the document root by @Fannon in https://github.com/open-resource-discovery/overlay-golang/pull/11
