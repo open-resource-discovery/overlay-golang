@@ -484,6 +484,23 @@ func TestIntegration_Merge_EnumTypeMember_AddsDescriptionToReadMember(t *testing
 	)
 }
 
+// TestIntegration_Merge_EnumType_CompactMemberAnnotation_AddsDescriptionToReadMember
+// accepts the CSDL member-annotation key syntax on an enum-type patch.
+func TestIntegration_Merge_EnumType_CompactMemberAnnotation_AddsDescriptionToReadMember(t *testing.T) {
+	testutils.AssertDeepEquals(
+		t,
+		loadExpected("merge_enumtype_nested_member_expected.json"),
+		applyIntegration(t, testutils.OnePatch(
+			"merge",
+			model.Selector{EnumType: "ODataDemo.FileAccess"},
+			map[string]any{
+				"@Core.Description":     "Possible permissions.",
+				"Read@Core.Description": "Grants read permission.",
+			},
+		)),
+	)
+}
+
 // ---- remove: EnumType member selector ---------------------------------------
 
 func TestIntegration_Remove_EnumTypeMemberWithAbsentEnumType_IsNoOp(t *testing.T) {

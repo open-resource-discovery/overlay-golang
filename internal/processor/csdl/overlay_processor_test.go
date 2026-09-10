@@ -168,6 +168,17 @@ func TestApply_Merge_EnumTypeMember_AddsAnnotationWithPrefix(t *testing.T) {
 	}
 }
 
+func TestApply_Merge_EnumType_CompactMemberAnnotation_AddsAnnotationWithPrefix(t *testing.T) {
+	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
+	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",
+		model.Selector{EnumType: "ODataDemo.FileAccess"},
+		map[string]any{"Read@Core.Description": "Read access"},
+	))
+	if got := testutils.Get(t, result, "ODataDemo", "FileAccess", "Read@Core.Description"); got != "Read access" {
+		t.Errorf("got %v, want %q", got, "Read access")
+	}
+}
+
 func TestApply_Merge_EntitySet_AddsAnnotation(t *testing.T) {
 	p := NewOverlayProcessor(model.ResourceDefinition{Content: odataContent, MediaType: "application/json"})
 	result := testutils.ApplyAndParse(t, p, testutils.OnePatch("merge",

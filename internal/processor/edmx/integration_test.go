@@ -80,6 +80,49 @@ func TestIntegration_Merge_EntityTypeWithProperty_AddsAnnotationOnProperty(t *te
 	)
 }
 
+// TestIntegration_Merge_EnumType_CompactMemberAnnotation_AddsDescriptionToMember
+// accepts the CSDL member-annotation key syntax on an enum-type patch.
+func TestIntegration_Merge_EnumType_CompactMemberAnnotation_AddsDescriptionToMember(t *testing.T) {
+	input := `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="CatalogService" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EnumType Name="Genre">
+        <Member Name="Fiction"/>
+      </EnumType>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`
+	expected := `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="CatalogService" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EnumType Name="Genre">
+        <Member Name="Fiction"/>
+      </EnumType>
+	  <Annotations Target="CatalogService.Genre">
+        <Annotation Term="Core.Description" String="Possible book genres"/>
+      </Annotations>
+      <Annotations Target="CatalogService.Genre/Fiction">
+        <Annotation Term="Core.Description" String="Fiction books"/>
+      </Annotations>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`
+
+	testutils.AssertDeepEquals(t,
+		normalizeXML(t, expected),
+		applyIntegrationContent(t, input, testutils.OnePatch(
+			"merge",
+			model.Selector{EnumType: "CatalogService.Genre"},
+			map[string]any{
+				"@Core.Description":        "Possible book genres",
+				"Fiction@Core.Description": "Fiction books",
+			},
+		)),
+	)
+}
+
 // ---- merge: EntitySet selector ----------------------------------------------
 
 // TestIntegration_Merge_EntitySet_AddsCapabilitiesAnnotation merges a

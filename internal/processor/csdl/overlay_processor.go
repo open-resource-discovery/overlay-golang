@@ -1,6 +1,7 @@
 package csdl
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/huandu/go-clone"
@@ -41,6 +42,20 @@ func (self *OverlayProcessor) Apply(od model.OverlayDefinition) (model.ResourceD
 		rd.Visibility = od.Overlay.Visibility
 		rd.Content = marshaller.MustMarshal("application/json", content)
 	}), aggregated
+}
+
+func (self *OverlayProcessor) preprocess(patch model.Patch, data map[string]any) map[string]any {
+	isEnumTypeSelector := len(patch.Selector.EnumType) > 0 && len(patch.Selector.PropertyType) == 0
+
+	return utils.Remap(data, func(key string, value any) (string, any) {
+		if !isEnumTypeSelector || slices.Index([]rune(key), '@') < 1 { // either no @ or at the start
+			return key, value
+		}
+
+		// split enum type member annotations from {<member>@<annotation>: <value>} to {<member>: {<annotation>: <value>}}
+		parts := strings.SplitN(key, "@", 2)
+		return parts[0], map[string]any{"@" + parts[1]: value}
+	})
 }
 
 func (self *OverlayProcessor) apply(patch model.Patch, content map[string]any) *errors.OverlayError {
@@ -128,7 +143,7 @@ func (self *OverlayProcessor) decompose(content map[string]any, patch model.Patc
 
 func (self *OverlayProcessor) decomposeSemanticSelector(content map[string]any, patch model.Patch) ([]model.Patch, *errors.OverlayError) {
 	result := make([]model.Patch, 0)
-	data := utils.SafeCast[map[string]any](patch.Data)
+	data := self.preprocess(patch, utils.SafeCast[map[string]any](patch.Data))
 	isEnumTypeMemberSelector := len(patch.Selector.EnumType) > 0 && len(patch.Selector.PropertyType) > 0
 	expression, err := self.Resolve(content, patch)
 	if err != nil {

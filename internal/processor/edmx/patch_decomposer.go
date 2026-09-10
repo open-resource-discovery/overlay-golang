@@ -1,6 +1,9 @@
 package edmx
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/open-resource-discovery/overlay-golang/internal/common/utils"
 	"github.com/open-resource-discovery/overlay-golang/model"
 )
@@ -13,9 +16,9 @@ func (self PatchDecomposer) Decompose(patch model.Patch) []model.Patch {
 	}
 
 	result := make([]model.Patch, 0)
-	data := utils.SafeCast[map[string]any](patch.Data)
-	annotations := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] == '@' })
-	properties := utils.Filter(utils.Keys(data), func(s string) bool { return s[0] != '@' && s[0] != '$' })
+	data := self.preprocess(patch, utils.SafeCast[map[string]any](patch.Data))
+	annotations := utils.Filter(utils.Keys(data), func(key string) bool { return key[0] == '@' })
+	properties := utils.Filter(utils.Keys(data), func(key string) bool { return key[0] != '@' && key[0] != '$' })
 
 	if len(annotations) > 0 {
 		if patch.Action == "merge" {
@@ -58,4 +61,18 @@ func (self PatchDecomposer) Decompose(patch model.Patch) []model.Patch {
 	}
 
 	return result
+}
+
+func (self PatchDecomposer) preprocess(patch model.Patch, data map[string]any) map[string]any {
+	isEnumTypeSelector := len(patch.Selector.EnumType) > 0 && len(patch.Selector.PropertyType) == 0
+
+	return utils.Remap(data, func(key string, value any) (string, any) {
+		if !isEnumTypeSelector || slices.Index([]rune(key), '@') < 1 { // either no @ or at the start
+			return key, value
+		}
+
+		// split enum type member annotations from {<member>@<annotation>: <value>} to {<member>: {<annotation>: <value>}}
+		parts := strings.SplitN(key, "@", 2)
+		return parts[0], map[string]any{"@" + parts[1]: value}
+	})
 }

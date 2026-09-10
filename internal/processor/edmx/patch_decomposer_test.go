@@ -119,6 +119,42 @@ func TestDecompose_MultipleAnnotations_CollapsedIntoOnePatch(t *testing.T) {
 
 // ---- property key cases -----------------------------------------------------
 
+func TestDecompose_EnumTypeMemberAnnotation_ProducesMemberAnnotationPatches(t *testing.T) {
+	testutils.AssertContainsInOrder(
+		t,
+		PatchDecomposer(0).Decompose(model.Patch{
+			Action:   "merge",
+			Selector: &model.Selector{EnumType: "CatalogService.Genre"},
+			Data: map[string]any{
+				"@Core.Description":        "Book genre",
+				"Fiction@Core.Description": "Fiction books",
+			},
+		}),
+		[]model.Patch{
+			{
+				Action:   "remove",
+				Selector: &model.Selector{EnumType: "CatalogService.Genre"},
+				Data:     map[string]any{"@Core.Description": nil},
+			},
+			{
+				Action:   "merge",
+				Selector: &model.Selector{EnumType: "CatalogService.Genre"},
+				Data:     map[string]any{"@Core.Description": "Book genre"},
+			},
+			{
+				Action:   "remove",
+				Selector: &model.Selector{EnumType: "CatalogService.Genre", PropertyType: "Fiction"},
+				Data:     map[string]any{"@Core.Description": nil},
+			},
+			{
+				Action:   "merge",
+				Selector: &model.Selector{EnumType: "CatalogService.Genre", PropertyType: "Fiction"},
+				Data:     map[string]any{"@Core.Description": "Fiction books"},
+			},
+		},
+	)
+}
+
 func TestDecompose_SingleProperty_NoOperation_SetsPropertyType(t *testing.T) {
 	// Without Operation set, the property name goes into Selector.PropertyType.
 	testutils.AssertContainsInOrder(
