@@ -94,8 +94,12 @@ func Eq[T bool | string | constraints.Float | constraints.Integer](expression st
 	)
 }
 
-func And(first *jp.Equation, second *jp.Equation, rest ...*jp.Equation) *jp.Equation {
-	return utils.Reduce(rest, jp.And(first, second), jp.And)
+func And(first *jp.Equation, rest ...*jp.Equation) *jp.Equation {
+	if len(rest) < 1 {
+		return first
+	}
+
+	return utils.Reduce(rest[1:], jp.And(first, rest[0]), jp.And)
 }
 
 func Or(first *jp.Equation, second *jp.Equation, rest ...*jp.Equation) *jp.Equation {

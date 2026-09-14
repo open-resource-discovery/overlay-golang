@@ -236,12 +236,63 @@ func TestExpressions_ComplexTypeProperty_WrongParentKind_ReturnsError(t *testing
 
 // ---- Operation (Function) ---------------------------------------------------
 
+func overloadedFunctionsDocument() map[string]any {
+	return map[string]any{
+		"Test": map[string]any{
+			"Overloaded": []any{
+				map[string]any{
+					"$Kind":       "Function",
+					"$Parameter":  []any{},
+					"$ReturnType": map[string]any{"$Type": "Edm.String"},
+				},
+				map[string]any{
+					"$Kind": "Function",
+					"$Parameter": []any{
+						map[string]any{"$Name": "value", "$Type": "Edm.Int32"},
+					},
+					"$ReturnType": map[string]any{"$Type": "Edm.Int32"},
+				},
+			},
+		},
+	}
+}
+
 func TestExpressions_Operation_Function_FullyQualified_Found(t *testing.T) {
 	// ProductsByRating is stored as an array per the OData CSDL JSON spec.
 	expression := testutils.AssertNoError(Expressions(0).Operation(csdlDoc, testPatch(model.Selector{Operation: "ODataDemo.ProductsByRating"})))
 
 	testutils.AssertExpr(t, expression, "$.ODataDemo.ProductsByRating[0]")
 	testutils.AssertResolvesToNode(t, csdlDoc, expression, csdlDoc["ODataDemo"].(map[string]any)["ProductsByRating"].([]any)[0])
+}
+
+func TestResolve_Operation_ZeroParameters_ResolvesOverload(t *testing.T) {
+	document := overloadedFunctionsDocument()
+	overloads := document["Test"].(map[string]any)["Overloaded"].([]any)
+
+	expression, err := Expressions(0).Resolve(document, testPatch(model.Selector{Operation: "Test.Overloaded()"}))
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	testutils.AssertResolvesToNode(t, document, expression, overloads[0])
+}
+
+func TestResolve_Operation_Parameters_ResolvesOverload(t *testing.T) {
+	document := overloadedFunctionsDocument()
+	overloads := document["Test"].(map[string]any)["Overloaded"].([]any)
+
+	expression, err := Expressions(0).Resolve(document, testPatch(model.Selector{Operation: "Test.Overloaded(Edm.Int32)"}))
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	testutils.AssertResolvesToNode(t, document, expression, overloads[1])
+}
+
+func TestResolve_Operation_OverloadsWithoutParameters_ReturnsError(t *testing.T) {
+	if _, err := Expressions(0).Resolve(overloadedFunctionsDocument(), testPatch(model.Selector{Operation: "Test.Overloaded"})); err == nil {
+		t.Fatal("expected error when resolving overloaded function without parameter types, got nil")
+	}
 }
 
 func TestExpressions_Operation_NotFound_ReturnsError(t *testing.T) {

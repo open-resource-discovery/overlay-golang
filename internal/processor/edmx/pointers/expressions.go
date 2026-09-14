@@ -47,12 +47,12 @@ var expressions = (func() *struct {
 			"nodes",
 			jputils.And(
 				jputils.Eq("@.name", "Action"),
-				jputils.Eq("@.attributes.Name", name),
 				utils.Ternary(
 					parameters == nil,
-					[]*jp.Equation{},
+					[]*jp.Equation{jputils.Eq("@.attributes.Name", name)},
 					append(
 						[]*jp.Equation{
+							jputils.Eq("@.attributes.Name", name),
 							jp.Eq(
 								jp.Count(jputils.Expr("@", "nodes", jputils.Eq("@.name", "Parameter"))),
 								jp.ConstInt(int64(len(parameters))),
@@ -75,12 +75,12 @@ var expressions = (func() *struct {
 			"nodes",
 			jputils.And(
 				jputils.Eq("@.name", "Function"),
-				jputils.Eq("@.attributes.Name", name),
 				utils.Ternary(
 					parameters == nil,
-					[]*jp.Equation{},
+					[]*jp.Equation{jputils.Eq("@.attributes.Name", name)},
 					append(
 						[]*jp.Equation{
+							jputils.Eq("@.attributes.Name", name),
 							jp.Eq(
 								jp.Count(jputils.Expr("@", "nodes", jputils.Eq("@.name", "Parameter"))),
 								jp.ConstInt(int64(len(parameters))),
