@@ -1,6 +1,7 @@
 package csdl
 
 import (
+	"fmt"
 	"math"
 	"strings"
 
@@ -70,7 +71,7 @@ func (self Expressions) Resolve(document map[string]any, patch model.Patch) (jp.
 }
 
 func (self Expressions) EnumType(document any, patch model.Patch) (jp.Expr, *errors.OverlayError) {
-	namespace, name := self.fqsplit(patch.Selector.EnumType)
+	namespace, name, _ := self.fqsplit(patch.Selector.EnumType)
 	pexpression, found, err := jputils.Pinpoint(document, jputils.Expr("$", utils.Ternary(len(namespace) > 0, namespace, "*"), name))
 
 	if !found && patch.Action == "remove" {
@@ -91,29 +92,51 @@ func (self Expressions) Namespace(document any, patch model.Patch) (jp.Expr, *er
 }
 
 func (self Expressions) Operation(document any, patch model.Patch) (jp.Expr, *errors.OverlayError) {
-	namespace, name := self.fqsplit(patch.Selector.Operation)
-	pexpression, found, err := jputils.Pinpoint(document, jputils.Expr("$", utils.Ternary(len(namespace) > 0, namespace, "*"), name))
+	namespace, name, parameters := self.fqsplit(patch.Selector.Operation)
+	pexpression, found, err := jputils.Pinpoint(
+		document,
+		jputils.Expr(
+			"$",
+			utils.Ternary(len(namespace) > 0, namespace, "*"),
+			name,
+			jputils.And(
+				jputils.Or(
+					jputils.Eq("@.$Kind", "Action"),
+					jputils.Eq("@.$Kind", "Function"),
+				),
+				utils.Ternary(
+					parameters == nil,
+					[]*jp.Equation{},
+					append(
+						[]*jp.Equation{
+							jp.Eq(
+								jp.Length(jputils.Expr("@", "$Parameter")),
+								jp.ConstInt(int64(len(parameters))),
+							),
+						},
+						utils.Map(
+							parameters,
+							func(idx int, parameter string) *jp.Equation {
+								return jputils.Eq(fmt.Sprintf("@.$Parameter.[%d].$Type", idx), parameter)
+							},
+						)...,
+					),
+				)...,
+			),
+		),
+	)
 
 	if !found && patch.Action == "remove" {
 		return pexpression, nil
 	} else if err != nil {
 		return nil, err
-	} else if node, ok := pexpression.First(document).([]any); !ok || len(node) != 1 {
-		return nil, errors.Create(errors.Severity_Warning, "ambiguous expression: %s", pexpression.String())
 	}
 
-	// TODO - add support for resolving ambiguity based on function signature just like with EDMX
-
-	// Per OData CSDL JSON spec, overloaded functions/actions are stored as arrays.
-	if node, ok := pexpression.Nth(0).First(document).(map[string]any); !ok || !utils.OneOf(node["$Kind"], "Action", "Function") {
-		return nil, errors.Create(errors.Severity_Warning, "unexpected element found: %v", pexpression.First(document))
-	}
-
-	return pexpression.Nth(0), nil
+	return pexpression, nil
 }
 
 func (self Expressions) EntitySet(document any, patch model.Patch) (jp.Expr, *errors.OverlayError) {
-	namespace, name := self.fqsplit(patch.Selector.EntitySet)
+	namespace, name, _ := self.fqsplit(patch.Selector.EntitySet)
 	candidates := utils.Ternary(
 		len(namespace) == 0,
 		[]jp.Expr{
@@ -152,7 +175,7 @@ func (self Expressions) EntitySet(document any, patch model.Patch) (jp.Expr, *er
 }
 
 func (self Expressions) EntityType(document any, patch model.Patch) (jp.Expr, *errors.OverlayError) {
-	namespace, name := self.fqsplit(patch.Selector.EntityType)
+	namespace, name, _ := self.fqsplit(patch.Selector.EntityType)
 	pexpression, found, err := jputils.Pinpoint(document, jputils.Expr("$", utils.Ternary(len(namespace) == 0, "*", namespace), name))
 
 	if !found && patch.Action == "remove" {
@@ -167,7 +190,7 @@ func (self Expressions) EntityType(document any, patch model.Patch) (jp.Expr, *e
 }
 
 func (self Expressions) ComplexType(document any, patch model.Patch) (jp.Expr, *errors.OverlayError) {
-	namespace, name := self.fqsplit(patch.Selector.ComplexType)
+	namespace, name, _ := self.fqsplit(patch.Selector.ComplexType)
 	pexpression, found, err := jputils.Pinpoint(document, jputils.Expr("$", utils.Ternary(len(namespace) == 0, "*", namespace), name))
 
 	if !found && patch.Action == "remove" {
@@ -238,7 +261,20 @@ func (self Expressions) ComplexTypeProperty(document any, patch model.Patch) (jp
 	return expression, utils.Ternary(!found && patch.Action == "remove", nil, err)
 }
 
-func (self Expressions) fqsplit(value string) (namespace string, name string) {
-	return value[:int(math.Max(float64(0), float64(strings.LastIndex(value, "."))))],
-		value[int(math.Max(float64(0), float64(strings.LastIndex(value, ".")+1))):]
+func (self Expressions) fqsplit(value string) (namespace string, name string, parameters []string) {
+	idx := strings.IndexAny(value, "(")
+	fqname := value[:utils.Ternary(idx < 0, len(value), idx)]
+	params := value[utils.Ternary(idx < 0, len(value), idx+1):]
+
+	return fqname[:int(math.Max(float64(0), float64(strings.LastIndex(fqname, "."))))],
+		fqname[int(math.Max(float64(0), float64(strings.LastIndex(fqname, ".")+1))):],
+		utils.Ternary(idx < 0, nil, utils.Filter(
+			utils.Map(
+				strings.Split(params[:utils.Ternary(len(params) == 0, 0, len(params)-1)], ","),
+				func(_ int, token string) string {
+					return strings.TrimSpace(token)
+				},
+			),
+			func(param string) bool { return len(param) > 0 },
+		))
 }
