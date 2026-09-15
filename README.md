@@ -21,8 +21,8 @@ go get github.com/open-resource-discovery/overlay-golang
 
 ```go
 import (
-    overlays "github.tools.sap/ORD/goverlay"
-    "github.tools.sap/ORD/goverlay/model"
+    overlays "github.com/open-resource-discovery/overlay-golang"
+    "github.com/open-resource-discovery/overlay-golang/model"
 )
 
 definition := model.ResourceDefinition{
