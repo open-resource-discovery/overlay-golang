@@ -14,15 +14,15 @@ Requires Go 1.26 or later.
 ### Installation
 
 ```sh
-go get github.tools.sap/ORD/goverlay
+go get github.com/open-resource-discovery/overlay-golang
 ```
 
 ### Quick start
 
 ```go
 import (
-    overlays "github.tools.sap/ORD/goverlay"
-    "github.tools.sap/ORD/goverlay/model"
+    overlays "github.com/open-resource-discovery/overlay-golang"
+    "github.com/open-resource-discovery/overlay-golang/model"
 )
 
 definition := model.ResourceDefinition{
