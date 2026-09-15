@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [unreleased]
 
+## [[0.0.4](https://github.com/open-resource-discovery/overlay-golang/releases/tag/v0.0.4)] - 2026-09-15
+
+- Improve operation resolution for CSDL by @mlakov in https://github.com/open-resource-discovery/overlay-golang/pull/32
+
 ## [[0.0.3](https://github.com/open-resource-discovery/overlay-golang/releases/tag/v0.0.3)] - 2026-09-11
 
 - Ensure that 'remove of missing' is no-op by @mlakov in https://github.com/open-resource-discovery/overlay-golang/pull/27
