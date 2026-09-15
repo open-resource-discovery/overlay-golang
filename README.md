@@ -14,7 +14,7 @@ Requires Go 1.26 or later.
 ### Installation
 
 ```sh
-go get github.tools.sap/ORD/goverlay
+go get github.com/open-resource-discovery/overlay-golang
 ```
 
 ### Quick start
