@@ -3,7 +3,7 @@ module github.com/open-resource-discovery/overlay-golang
 go 1.26.0
 
 require (
-	github.com/antchfx/xmlquery v1.5.1
+	github.com/antchfx/xmlquery v1.5.2
 	github.com/go-errors/errors v1.5.1
 	github.com/huandu/go-clone v1.7.3
 	github.com/ohler55/ojg v1.28.7
@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	github.com/antchfx/xpath v1.3.6 // indirect
+	github.com/antchfx/xpath v1.3.9 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
