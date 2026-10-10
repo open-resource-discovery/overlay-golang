@@ -7,7 +7,7 @@ require (
 	github.com/go-errors/errors v1.5.1
 	github.com/huandu/go-clone v1.7.3
 	github.com/ohler55/ojg v1.28.7
-	golang.org/x/exp v0.0.0-20261007192929-f45ad48fbe92
+	golang.org/x/exp v0.0.0-20261009195045-ca0d7ba23607
 	gopkg.in/yaml.v3 v3.0.1
 )
 
