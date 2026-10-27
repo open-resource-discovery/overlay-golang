@@ -60,7 +60,7 @@ func TestExpressions_EntityType_WithoutProperty(t *testing.T) {
 func TestExpressions_EntityType_WithProperty(t *testing.T) {
 	expr := expressions.EntityType("CatalogService", "Books", "title")
 
-	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'EntityType' && @.attributes.Name == 'Books')].nodes[?(@.attributes.Name == 'title' && @.name == 'Property' || @.name == 'NavigationProperty')]`)
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'CatalogService')].nodes[?(@.name == 'EntityType' && @.attributes.Name == 'Books')].nodes[?(@.attributes.Name == 'title' && (@.name == 'Property' || @.name == 'NavigationProperty'))]`)
 
 	node := resolve(expr)
 	if node.Name() != "Property" || node.Attribute("Name") != "title" {
@@ -77,7 +77,7 @@ func TestExpressions_EntityType_WithNavigationProperty(t *testing.T) {
   </Schema>`)
 
 	expr := expressions.EntityType("My.Service", "Book", "author")
-	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'My.Service')].nodes[?(@.name == 'EntityType' && @.attributes.Name == 'Book')].nodes[?(@.attributes.Name == 'author' && @.name == 'Property' || @.name == 'NavigationProperty')]`)
+	testutils.AssertExpr(t, expr, `$.nodes[?(@.name == 'edmx:Edmx')].nodes[?(@.name == 'edmx:DataServices')].nodes[?(@.name == 'Schema' && @.attributes.Namespace == 'My.Service')].nodes[?(@.name == 'EntityType' && @.attributes.Name == 'Book')].nodes[?(@.attributes.Name == 'author' && (@.name == 'Property' || @.name == 'NavigationProperty'))]`)
 
 	matches := expr.Get(doc)
 	if len(matches) != 1 {

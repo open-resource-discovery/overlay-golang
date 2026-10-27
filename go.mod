@@ -6,7 +6,7 @@ require (
 	github.com/antchfx/xmlquery v1.5.2
 	github.com/go-errors/errors v1.5.1
 	github.com/huandu/go-clone v1.7.3
-	github.com/ohler55/ojg v1.28.7
+	github.com/ohler55/ojg v1.28.8
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e
 	gopkg.in/yaml.v3 v3.0.1
 )
