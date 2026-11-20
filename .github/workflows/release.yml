@@ -8,23 +8,25 @@ on:
         required: false
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
-
   create-github-release:
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+      checks: write
+      statuses: write
     runs-on: ubuntu-latest
     steps:
-
       - name: Check out repository
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Create GitHub Release
-        uses: open-resource-discovery/github-release@main
+        uses: open-resource-discovery/github-release@2d8817b7382966b490d5c78125d97da14ee918bc # main @ 2026-11-14
         with:
           tag-template: "v<version>"
           version: ${{ inputs.version }}
