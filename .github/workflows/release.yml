@@ -16,9 +16,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      actions: write
-      checks: write
-      statuses: write
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -32,4 +29,5 @@ jobs:
         with:
           tag-template: "v<version>"
           version: ${{ inputs.version }}
+          ci-workflows: none
     if: github.ref == 'refs/heads/main'
